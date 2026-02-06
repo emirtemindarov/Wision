@@ -49,9 +49,9 @@ fun FileAnalysisScreen(
     assistantViewModel: AssistantViewModel,
     navController: NavHostController,
 ) {
+    assistantViewModel.debug()
 
     // FIXME при изменение темы приложения, запрос срабатывает дополнительно !!!!!
-    //  причем получается в итоге 3 запроса, судя по сохранениям
     LaunchedEffect(graphId, fileInfo) {
 
         val mode = when {
@@ -60,8 +60,7 @@ fun FileAnalysisScreen(
             else -> error("Invalid navigation arguments")
         }
 
-        //assistantViewModel.loadGraph(mode)
-        assistantViewModel.responsesLoadGraph(mode)
+        assistantViewModel.loadGraph(mode)
     }
 
     Log.i("fileInfoFAS", "$fileInfo")
@@ -71,6 +70,7 @@ fun FileAnalysisScreen(
 
     // Перехват системной кнопки "Назад"
     BackHandler {
+        assistantViewModel.reset()
         Log.i("BackHandlerFAS", "from FileAnalysisScreen")
         navController.popBackStack()
     }
@@ -78,16 +78,23 @@ fun FileAnalysisScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.onSurface),
+            .background(MaterialTheme.colorScheme.surface),
         verticalArrangement = Arrangement.Top,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         if (Environment.DEBUG) { Text("FileAnalysisScreen", color = Color.Green) }
 
         when (stage) {
+            is AssistantStage.Idle -> {
+                //Spacer(modifier = Modifier.fillMaxSize())
+            }
+
             is AssistantStage.Loading -> {
-                //Text("Загрузка...")
-                FileAnalysisAnimation(Modifier.fillMaxSize())
+                Loading(stage.mode)
+            }
+
+            is AssistantStage.Error -> {
+                Text("Ошибка: ${stage.message}")
             }
 
             is AssistantStage.Success -> {
@@ -108,7 +115,7 @@ fun FileAnalysisScreen(
                     modifier = Modifier
                         .weight(1f)
                         .clipToBounds()       // обрезка
-                        .background(Color(0xFFE3F2FD))
+                        .background(MaterialTheme.colorScheme.surface)    // было 0xFFE3F2FD
                         .pointerInput(Unit) {
                             detectTransformGestures { _, pan, zoom, _ ->
                                 scale.floatValue = (scale.floatValue * zoom).coerceIn(0.3f, 4f)
@@ -137,6 +144,7 @@ fun FileAnalysisScreen(
                         SimpleButton(
                             enabled = true,
                             action = {
+                                assistantViewModel.reset()
                                 navController.popBackStack()
                             }
                         ) {
@@ -147,16 +155,17 @@ fun FileAnalysisScreen(
                             )
                         }
 
-                        //Button(onClick = { /* действие 1 */ }) {
-                        /*IconButton(onClick = { navController.popBackStack() }) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Назад",
-                                tint = MaterialTheme.colorScheme.onPrimary
-                            )
-                        }*/
-                        //}
-                        //Spacer(modifier = Modifier.height(8.dp))
+                        // другая стрелка с отзеркаливанием
+                        /*Button(onClick = { *//* действие 1 *//* }) {
+                            IconButton(onClick = { navController.popBackStack() }) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = "Назад",
+                                    tint = MaterialTheme.colorScheme.onPrimary
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))*/
                     }
 
                     // Справа сверху
@@ -214,11 +223,30 @@ fun FileAnalysisScreen(
                 }
             }
 
-            is AssistantStage.Error -> {
-                Text("Ошибка: ${stage.message}")
-            }
         }
 
     }
 
+}
+
+// при AssistantStage.Loading
+@Composable
+private fun Loading(mode: GraphLoadMode) {
+    when (mode) {
+        is GraphLoadMode.FromDatabase -> {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.surface),    // было 0xFFE3F2FD
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                CircularProgressIndicator()
+            }
+        }
+
+        is GraphLoadMode.NewAnalysis -> {
+            FileAnalysisAnimation()
+        }
+    }
 }

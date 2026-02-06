@@ -44,10 +44,12 @@ class MainActivity : ComponentActivity() {
             val savedProjectsViewModel = remember {
                 SavedProjectsViewModel(graphDao)
             }
+            savedProjectsViewModel.debug()
 
             val assistantViewModel: AssistantViewModel = viewModel(
                 factory = AssistantViewModelFactory(graphDao)
             )
+            assistantViewModel.debug()
 
             val navController = rememberNavController()
 

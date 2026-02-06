@@ -26,10 +26,8 @@ import kotlin.random.Random
 
 // Анимация во время загрузки графа (для файла или папки)
 @Composable
-fun FileAnalysisAnimation(
-    modifier: Modifier = Modifier
-) {
-    val scope = rememberCoroutineScope()
+fun FileAnalysisAnimation() {
+    //val scope = rememberCoroutineScope()
 
     // Стадии анимации
     var stage by remember { mutableIntStateOf(0) }
@@ -98,7 +96,7 @@ fun FileAnalysisAnimation(
     }
 
     Canvas(
-        modifier = modifier.fillMaxSize()
+        modifier = Modifier.fillMaxSize()
     ) {
 
         val scale = 1.8f

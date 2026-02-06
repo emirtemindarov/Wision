@@ -1,7 +1,5 @@
 package app.emirtemindarov.p1.assistant.responsesapi
 
-import kotlinx.serialization.descriptors.StructureKind
-
 data class ResponseRequest(
     val model: String,
     val input: List<InputItem>,

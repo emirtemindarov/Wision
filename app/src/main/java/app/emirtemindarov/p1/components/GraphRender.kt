@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
@@ -13,6 +14,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 //import app.emirtemindarov.p1.assistant.data.Edge
 import app.emirtemindarov.p1.assistant.data.GraphModel
@@ -190,6 +192,9 @@ fun GraphRenderV2(
     //var offset by remember { mutableStateOf(Offset.Zero) }
     var selectedNode by remember { mutableStateOf<RenderNode?>(null) }
 
+    val textColor = MaterialTheme.colorScheme.onSurface
+
+    // FIXME Масштабирование работает некорректно когда граф не в центральной области
     // Поддержка мультитач и перетаскивания
     val gestureModifier = Modifier.pointerInput(Unit) {
         detectTransformGestures { centroid, pan, zoom, _ ->
@@ -212,7 +217,7 @@ fun GraphRenderV2(
 
             val pos = center + node.position * scale.floatValue + offset.value
 
-            // Контейнер (если expanded)
+            // FIXME Контейнер (если expanded)
             if (node.expanded && node.children.isNotEmpty()) {
                 val width = node.defaultRadius * 4 * scale.floatValue
                 val height = node.defaultRadius * 4 * scale.floatValue
@@ -257,7 +262,7 @@ fun GraphRenderV2(
                 pos.x + node.defaultRadius * scale.floatValue + 10f,
                 pos.y,
                 android.graphics.Paint().apply {
-                    color = android.graphics.Color.BLACK
+                    color = textColor.toArgb()
                     textSize = 32f * scale.floatValue
                 }
             )

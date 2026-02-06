@@ -18,8 +18,10 @@ val Blue40 = Color(0xFF0451B4)
 val BlueGrey40 = Color(0xFF3D46AD)
 val Cyan40 = Color(0xFF21C7F8)
 
-val White80 = Color(0xFFFFFFFF)
+val White100 = Color(0xFFFFFFFF)
 
 val White40 = Color(0xFFFFD0D0)
 
-val DisabledElement = Color(0xFFBEBEBE)
+val DisabledElement = Color(0xFFC0C0C0)
+
+val GraphBackground = Color(0xFFE3F2FD)

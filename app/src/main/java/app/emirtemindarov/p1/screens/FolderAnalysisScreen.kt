@@ -50,9 +50,9 @@ fun FolderAnalysisScreen(
     assistantViewModel: AssistantViewModel,
     navController: NavHostController,
 ) {
+    assistantViewModel.debug()
 
     // FIXME при изменение темы приложения, запрос срабатывает дополнительно !!!!!
-    //  причем получается в итоге 3 запроса, судя по сохранениям
     LaunchedEffect(graphId, fileHierarchyInfo) {
 
         val mode = when {
@@ -61,8 +61,7 @@ fun FolderAnalysisScreen(
             else -> error("Invalid navigation arguments")
         }
 
-        //assistantViewModel.loadGraph(mode)
-        assistantViewModel.responsesLoadGraph(mode)
+        assistantViewModel.loadGraph(mode)
     }
 
     Log.i("fileInfoFoAS", "$fileHierarchyInfo")
@@ -72,6 +71,7 @@ fun FolderAnalysisScreen(
 
     // Перехват системной кнопки "Назад"
     BackHandler {
+        assistantViewModel.reset()
         Log.i("BackHandlerFoAS", "from FolderAnalysisScreen")
         navController.popBackStack()
     }
@@ -79,16 +79,23 @@ fun FolderAnalysisScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.onSurface),
+            .background(MaterialTheme.colorScheme.surface),
         verticalArrangement = Arrangement.Top,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         if (Environment.DEBUG) { Text("FolderAnalysisScreen", color = Color.Green) }
 
         when (stage) {
+            is AssistantStage.Idle -> {
+                //Spacer(modifier = Modifier.fillMaxSize())
+            }
+
             is AssistantStage.Loading -> {
-                //Text("Загрузка...")
-                FileAnalysisAnimation(Modifier.fillMaxSize())
+                Loading(stage.mode)
+            }
+
+            is AssistantStage.Error -> {
+                Text("Ошибка: ${stage.message}")
             }
 
             is AssistantStage.Success -> {
@@ -109,7 +116,7 @@ fun FolderAnalysisScreen(
                     modifier = Modifier
                         .weight(1f)
                         .clipToBounds()      // обрезка
-                        .background(Color(0xFFE3F2FD))
+                        .background(MaterialTheme.colorScheme.surface)    // было 0xFFE3F2FD)
                         .pointerInput(Unit) {
                             detectTransformGestures { _, pan, zoom, _ ->
                                 scale.floatValue = (scale.floatValue * zoom).coerceIn(0.3f, 4f)
@@ -138,6 +145,7 @@ fun FolderAnalysisScreen(
                         SimpleButton(
                             enabled = true,
                             action = {
+                                assistantViewModel.reset()
                                 navController.popBackStack()
                             }
                         ) {
@@ -204,12 +212,29 @@ fun FolderAnalysisScreen(
                 }
             }
 
-            is AssistantStage.Error -> {
-                Text("Ошибка: ${stage.message}")
-            }
         }
 
     }
 }
 
+// при AssistantStage.Loading
+@Composable
+private fun Loading(mode: GraphLoadMode) {
+    when (mode) {
+        is GraphLoadMode.FromDatabase -> {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.surface),    // было 0xFFE3F2FD
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                CircularProgressIndicator()
+            }
+        }
 
+        is GraphLoadMode.NewAnalysis -> {
+            FileAnalysisAnimation()
+        }
+    }
+}

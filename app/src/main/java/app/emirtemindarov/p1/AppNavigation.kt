@@ -198,7 +198,7 @@ fun AppNavigation(
         ) {
             composable<Screen.SavedScreen> {
                 SavedScreen(
-                    viewModel = savedProjectsViewModel,
+                    savedProjectsViewModel = savedProjectsViewModel,
                     navController = navController,
                     onGraphClick = { graph ->
                         navController.navigate(

@@ -4,6 +4,6 @@ import androidx.compose.runtime.Stable
 
 @Stable
 data class AssistantState(
-    val stage: AssistantStage = AssistantStage.Loading,
+    val stage: AssistantStage = AssistantStage.Idle,
 )
 

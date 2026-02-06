@@ -1,5 +1,15 @@
 package app.emirtemindarov.p1.screens
 
+import android.util.Log
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.StartOffset
+import androidx.compose.animation.core.StartOffsetType
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.keyframes
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -14,6 +24,10 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -29,6 +43,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import app.emirtemindarov.p1.R
 import app.emirtemindarov.p1.Screen
+import app.emirtemindarov.p1.mvvm.savedprojects.SavedProjectsStage
 import app.emirtemindarov.p1.mvvm.savedprojects.SavedProjectsViewModel
 import app.emirtemindarov.p1.room.GraphEntity
 import app.emirtemindarov.p1.utils.FileUtils
@@ -37,70 +52,91 @@ import java.util.*
 
 @Composable
 fun SavedScreen(
-    viewModel: SavedProjectsViewModel,
+    savedProjectsViewModel: SavedProjectsViewModel,
     navController: NavHostController,
     onGraphClick: (GraphEntity) -> Unit = {},
 ) {
 
-    val graphs by viewModel.graphs.collectAsState()
+    savedProjectsViewModel.debug()
 
-    // TODO если идет загрузка
-    /*if (graphs.isLoading) {
-        SavedFetchAnimation()
-    }*/
+    val state by savedProjectsViewModel.state.collectAsState()
+    //val graphs by savedProjectsViewModel.graphs.collectAsState()
 
-    // если нет сохраненных
-    if (graphs.isEmpty()) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.saved_placeholder),
-                contentDescription = null,
-                tint = Color.Unspecified
-            )
+    when (val stage = state.stage) {
 
-            Spacer(modifier = Modifier.height(80.dp))
-
-            Text(
-                text = "Проанализированные проекты\nбудут отображены здесь",
-                style = MaterialTheme.typography.bodyLarge,
-                fontFamily = FontFamily.Default,
-                fontWeight = FontWeight.Light,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,   // TODO полезная вещь!!!
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(80.dp))
-
+        // список загружается
+        SavedProjectsStage.Loading -> {
+            SavedSkeletonList()
         }
-    } else {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(40.dp, 30.dp),
-            verticalArrangement = Arrangement.spacedBy(38.dp)
-        ) {
-            items(graphs) { graph ->
-                SavedItem(
-                    graph = graph,
-                    onClick = { onGraphClick(graph) },
-                )
+
+        // список загружен
+        is SavedProjectsStage.Success -> {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(40.dp, 30.dp),
+                verticalArrangement = Arrangement.spacedBy(38.dp)
+            ) {
+                items(stage.graphs) { graph ->
+                    SavedItem(
+                        graph = graph,
+                        onClick = { onGraphClick(graph) },
+                    )
+                }
             }
+        }
+
+        // если нет сохраненных (список пуст)
+        SavedProjectsStage.Empty -> {
+            EmptyPlaceholder()
+        }
+
+        // ошибка в бд
+        is SavedProjectsStage.Error -> {
+            Text(stage.message)    // TODO оформить показ ошибки
         }
     }
 }
 
+// при SavedProjectsStage.Empty
+@Composable
+fun EmptyPlaceholder() {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.saved_placeholder),
+            contentDescription = null,
+            tint = Color.Unspecified
+        )
+
+        Spacer(modifier = Modifier.height(80.dp))
+
+        Text(
+            text = "Проанализированные проекты\nбудут отображены здесь",
+            style = MaterialTheme.typography.bodyLarge,
+            fontFamily = FontFamily.Default,
+            fontWeight = FontWeight.Light,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,   // TODO полезная вещь!!!
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(80.dp))
+
+    }
+}
+
+// элемент списка при SavedProjectsStage.Success
 @Composable
 private fun SavedItem(
     graph: GraphEntity,
     onClick: () -> Unit,
 ) {
 
-    // TODO возможно будет более подходящей для "gоследнее изменение"
+    // TODO возможно будет более подходящей для "последнее изменение"
     val date = remember(graph.createdAt) {
         SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault())
             .format(Date(graph.createdAt))
@@ -209,4 +245,112 @@ private fun SavedItem(
             }
         }
     }
+}
+
+// при SavedProjectsStage.Loading
+@Composable
+fun SavedSkeletonList() {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(40.dp, 30.dp),
+        verticalArrangement = Arrangement.spacedBy(38.dp)
+    ) {
+        items(4) {
+            SavedSkeletonItem()
+        }
+    }
+}
+
+// часть списка при SavedProjectsStage.Loading
+@Composable
+fun SavedSkeletonItem() {
+
+    val cornerRadius = 15.dp
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(280.dp)
+            .border(
+                1.dp,
+                Color.LightGray,
+                RoundedCornerShape(cornerRadius)
+            )
+            .clip(RoundedCornerShape(cornerRadius))
+    ) {
+
+        // картинка-заглушка
+        Box(
+            modifier = Modifier
+                .weight(0.715f)
+                .fillMaxWidth()
+                .shimmer()
+        )
+
+        Column(
+            modifier = Modifier
+                .weight(0.285f)
+                .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+
+            Box(
+                modifier = Modifier
+                    .height(18.dp)
+                    .fillMaxWidth(0.7f)
+                    .shimmer()
+            )
+
+            Box(
+                modifier = Modifier
+                    .height(12.dp)
+                    .fillMaxWidth(0.4f)
+                    .shimmer()
+            )
+        }
+    }
+}
+
+fun Modifier.shimmer(): Modifier = composed {
+
+    val transition = rememberInfiniteTransition(label = "shimmer")
+
+    // позиции перемещения слева направо
+    val initialValue = -1200f
+    val targetValue = 1200f
+
+    val translate by transition.animateFloat(
+        initialValue = initialValue,
+        targetValue = targetValue,
+        animationSpec = infiniteRepeatable(
+            animation = keyframes {
+                durationMillis = 4000
+
+                // движение
+                initialValue at 0
+                targetValue at 2400
+
+                // пауза (значение не меняется)
+                1600f at 3000
+            },
+            repeatMode = RepeatMode.Restart,
+            /*initialStartOffset = StartOffset(
+                offsetMillis = 1000,
+                offsetType = StartOffsetType.Delay
+            )*/
+        ),
+        label = "shimmer_translate"
+    )
+
+    background(
+        brush = Brush.linearGradient(
+            colors = listOf(
+                Color.LightGray.copy(alpha = 0.6f),
+                Color.LightGray.copy(alpha = 0.3f),
+                Color.LightGray.copy(alpha = 0.6f),
+            ),
+            start = Offset(translate, 0f),
+            end = Offset(translate + 1200f, 0f)
+        )
+    )
 }
