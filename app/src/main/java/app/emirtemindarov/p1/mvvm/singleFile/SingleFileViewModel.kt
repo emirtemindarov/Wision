@@ -19,7 +19,7 @@ class SingleFileViewModel : ViewModel(), FileStructureInterface {
     // Публичный неизменяемый поток
     val state = _state.asStateFlow()
 
-    fun loadAndSetOriginalRoot(context: Context, file: DocumentFile) {
+    fun loadAndSetSingleFile(context: Context, file: DocumentFile) {
         viewModelScope.launch {
             clear()
             val singleFile = buildSingleFile(

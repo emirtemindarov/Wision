@@ -3,6 +3,7 @@ package app.emirtemindarov.p1.mvvm.savedprojects
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.emirtemindarov.p1.Environment
 import app.emirtemindarov.p1.room.GraphDao
 import app.emirtemindarov.p1.room.GraphEntity
 import app.emirtemindarov.p1.utils.LogUtils.logLong
@@ -37,8 +38,9 @@ class SavedProjectsViewModel(
         viewModelScope.launch {
 
             // задержка для проверки, на случай долгого ответа базы данных
-            // TODO сделать DELAY константу по типу DEBUG
-            delay(20_000)
+            if (Environment.DELAY) {
+                delay(20_000)
+            }
 
             graphDao.getAll().collect { graphsList ->
                 _state.update { it.copy(

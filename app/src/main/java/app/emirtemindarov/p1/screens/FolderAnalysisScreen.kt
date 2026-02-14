@@ -11,8 +11,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.setValue
@@ -24,23 +22,22 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavHostController
-import app.emirtemindarov.p1.BuildConfig
 import app.emirtemindarov.p1.Environment
 import app.emirtemindarov.p1.R
 import app.emirtemindarov.p1.animations.FileAnalysisAnimation
 import app.emirtemindarov.p1.assistant.AssistantStage
 import app.emirtemindarov.p1.assistant.AssistantViewModel
 import app.emirtemindarov.p1.components.buttons.GraphButton
-import app.emirtemindarov.p1.components.GraphRenderV2
+import app.emirtemindarov.p1.render.GraphRenderV2
 import app.emirtemindarov.p1.components.buttons.SimpleButton
-import app.emirtemindarov.p1.mvvm.data.FileHierarchy
+import app.emirtemindarov.p1.render.CameraState
+import app.emirtemindarov.p1.render.GraphRenderV3
+import app.emirtemindarov.p1.render.GraphRenderV3M2
+import app.emirtemindarov.p1.render.GraphRenderV3M3
 import app.emirtemindarov.p1.room.GraphLoadMode
 import app.emirtemindarov.p1.utils.LogUtils.logLong
 import app.emirtemindarov.p1.utils.toRenderGraph
-import kotlinx.serialization.json.Json
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -128,13 +125,21 @@ fun FolderAnalysisScreen(
                     var layoutID by remember { mutableIntStateOf(1)}
                     if (layoutID > 4) { layoutID = 1 }
 
-                    GraphRenderV2(
+                    val camera = remember { CameraState() }
+
+                    GraphRenderV3M2(
+                        renderGraph = graph.toRenderGraph(layoutID),
+                        camera = camera,
+                        mainElementName = graph.nodes.first().label
+                    )
+
+                    /*GraphRenderV2(
                         renderGraph = graph.toRenderGraph(layoutID),
                         scale = scale,
                         offset = offset,
                         mainElementName = graph.nodes.first().label,
                         modifier = Modifier.fillMaxSize()
-                    )
+                    )*/
 
                     // Слева сверху
                     Column(

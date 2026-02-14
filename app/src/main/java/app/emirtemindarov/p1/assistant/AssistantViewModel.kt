@@ -60,6 +60,7 @@ class AssistantViewModel(
             }
 
             when (mode) {
+                // TODO проводить новый анализ не в основном потоке, а в параллельном в порядке очереди
                 is GraphLoadMode.NewAnalysis ->
                     askResponse(mode.payload)
 
@@ -113,6 +114,11 @@ class AssistantViewModel(
 
             Log.i("responseCreated", "Success")
 
+            Log.i("input_tokens", "${response.usage.input_tokens}")
+            Log.i("output_tokens", "${response.usage.output_tokens}")
+            Log.i("total_tokens", "${response.usage.total_tokens}")
+            Log.i("reasoning_tokens", "${response.usage.output_tokens_details.reasoning_tokens}")
+
             val jsonText = response.output
                 .firstOrNull { it.type == "message" }
                 ?.content
@@ -163,8 +169,9 @@ class AssistantViewModel(
     private suspend fun loadFromDatabase(graphId: String) {
 
         // задержка для проверки, на случай долгого ответа базы данных
-        // TODO сделать DELAY константу по типу DEBUG
-        delay(3_000)
+        if (Environment.DELAY) {
+            delay(3_000)
+        }
 
         val entity = graphDao.getById(graphId)
             ?: run {

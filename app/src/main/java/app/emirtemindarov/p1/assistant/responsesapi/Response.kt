@@ -27,7 +27,8 @@ data class InputContent(
 )
 
 data class ResponseResponse(
-    val output: List<ResponseOutput>
+    val output: List<ResponseOutput>,
+    val usage: ResponsesUsage,
 )
 
 data class ResponseOutput(
@@ -39,4 +40,15 @@ data class ResponseOutput(
 data class ResponseContent(
     val type: String,
     val text: String? = null
+)
+
+data class ResponsesUsage(
+    val input_tokens: Long,
+    val output_tokens: Long,
+    val total_tokens: Long,
+    val output_tokens_details: ReasoningTokens,
+)
+
+data class ReasoningTokens(
+    val reasoning_tokens: Long,
 )
