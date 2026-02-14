@@ -38,6 +38,7 @@ import app.emirtemindarov.p1.Environment
 import app.emirtemindarov.p1.R
 import app.emirtemindarov.p1.animations.FolderSelectionAnimationV1
 import app.emirtemindarov.p1.components.FakeTopBarTitle
+import app.emirtemindarov.p1.components.buttons.ComplexButton
 import app.emirtemindarov.p1.components.buttons.SimpleButton
 import app.emirtemindarov.p1.components.dividers.HorizontalDivider
 import app.emirtemindarov.p1.mvvm.originalroot.OriginalRootViewModel
@@ -87,18 +88,16 @@ fun FolderSelectionScreen(
         }
     }
 
-    val simpleButton: @Composable () -> Unit = {
-        SimpleButton(
-            enabled = true,
-            action = {
-                folderLauncher.launch(null)
-            }
+    val newFolderButton: @Composable () -> Unit = {
+        ComplexButton(
+            action = { folderLauncher.launch(null) },
+            modifier = Modifier.wrapContentSize(),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     painter = painterResource(id = R.drawable.reset_focus_24px),
                     contentDescription = "Выбрать новую папку",
-                    tint = MaterialTheme.colorScheme.surface
+                    tint = MaterialTheme.colorScheme.primary
                 )
 
                 Spacer(modifier = Modifier.width(16.dp))
@@ -149,7 +148,7 @@ fun FolderSelectionScreen(
 
                     Spacer(modifier = Modifier.height(50.dp))
 
-                    simpleButton.invoke()   // выполнение composable хранящегося в переменной
+                    newFolderButton.invoke()   // выполнение composable хранящегося в переменной
 
                     Spacer(modifier = Modifier.height(150.dp))
                 }
@@ -158,7 +157,7 @@ fun FolderSelectionScreen(
             // папка выбрана
             currentHierarchy?.let { currentHierarchy ->
 
-                simpleButton.invoke()
+                newFolderButton.invoke()
 
                 HorizontalDivider(top = 24.dp, bottom = 24.dp, padding = 48.dp)
 

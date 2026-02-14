@@ -15,7 +15,9 @@ import app.emirtemindarov.p1.components.FileInfoDisplay
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
@@ -30,6 +32,8 @@ import app.emirtemindarov.p1.Environment
 import app.emirtemindarov.p1.R
 import app.emirtemindarov.p1.animations.FileSelectionAnimationV6
 import app.emirtemindarov.p1.components.FakeTopBarTitle
+import app.emirtemindarov.p1.components.buttons.BorderedButton
+import app.emirtemindarov.p1.components.buttons.ComplexButton
 import app.emirtemindarov.p1.components.buttons.SimpleButton
 import app.emirtemindarov.p1.components.dividers.AutoDivider
 import app.emirtemindarov.p1.components.dividers.HorizontalDivider
@@ -73,23 +77,21 @@ fun FileSelectionScreen(
             file?.let {
                 Log.i("folderLauncher", "$file")
 
-                singleFileViewModel.loadAndSetOriginalRoot(context, file)
+                singleFileViewModel.loadAndSetSingleFile(context, file)
             }
         }
     }
 
-    val simpleButton: @Composable () -> Unit = {
-        SimpleButton(
-            enabled = true,
-            action = {
-                fileLauncher.launch(arrayOf("*/*"))
-            }
-        ) {   // */* значит «разрешить выбрать любой файл любого типа»
+    val newFileButton: @Composable () -> Unit = {
+        ComplexButton(
+            action = { fileLauncher.launch(arrayOf("*/*")) },
+            modifier = Modifier.wrapContentSize(),
+        ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     painter = painterResource(id = R.drawable.reset_focus_24px),
                     contentDescription = "Выбрать новый файл",
-                    tint = MaterialTheme.colorScheme.surface
+                    tint = MaterialTheme.colorScheme.primary
                 )
 
                 Spacer(modifier = Modifier.width(16.dp))
@@ -141,7 +143,7 @@ fun FileSelectionScreen(
 
                 Spacer(modifier = Modifier.height(50.dp))
 
-                simpleButton.invoke()   // выполнение composable хранящегося в переменной
+                newFileButton.invoke()   // выполнение composable хранящегося в переменной
 
                 Spacer(modifier = Modifier.height(150.dp))
             }
@@ -150,7 +152,7 @@ fun FileSelectionScreen(
             // файл выбран
             singleFile?.let { file ->
 
-                simpleButton.invoke()   // выполнение composable хранящегося в переменной
+                newFileButton.invoke()   // выполнение composable хранящегося в переменной
 
                 HorizontalDivider(top = 24.dp, padding = 48.dp)
 

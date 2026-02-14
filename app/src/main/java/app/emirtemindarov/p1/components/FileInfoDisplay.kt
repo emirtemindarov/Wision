@@ -1,7 +1,6 @@
 package app.emirtemindarov.p1.components
 
 import android.util.Log
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -18,8 +17,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.State
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -30,14 +27,11 @@ import androidx.navigation.NavHostController
 import app.emirtemindarov.p1.Environment
 import app.emirtemindarov.p1.R
 import app.emirtemindarov.p1.Screen
-import app.emirtemindarov.p1.components.buttons.GraphButton
-import app.emirtemindarov.p1.components.buttons.SimpleButton
+import app.emirtemindarov.p1.components.buttons.OpenDialogButton
 import app.emirtemindarov.p1.mvvm.data.FileHierarchy
 import app.emirtemindarov.p1.mvvm.data.FileInfo
 import app.emirtemindarov.p1.mvvm.interfaces.FileStructureInterface
-import app.emirtemindarov.p1.room.GraphLoadMode
 import app.emirtemindarov.p1.utils.FileUtils.formatDate
-import kotlinx.serialization.json.Json
 
 // Может работать и с папкой, и с файлом
 @Composable
@@ -72,12 +66,15 @@ fun FileInfoDisplay(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
 
-                SimpleButton(
-                    enabled = true,     // блокировка кнопок при переключении экрана
-                    action = {
-                        //fileStructure.setCurrentlyViewedFile(fileInfo)
+                // TODO !!! Кнопка "Открыть анализ" если текущий документ еще не поменялся
 
-                        // Создаю FileHierarchy напрямую, так как не работаю с DocumentFile API
+                OpenDialogButton(
+                    enabled = true,
+                    dialogTitle = "Подтвердите действие",
+                    dialogText = "Вы действительно хотите запустить анализ папки?",
+                    onConfirm = {
+
+                        // TODO проверить логику на пустой папке
                         val fileHierarchy = children?.let {
                             FileHierarchy(
                                 fileInfo = fileInfo,
@@ -85,30 +82,20 @@ fun FileInfoDisplay(
                             )
                         }
 
-                        //val json = Json.encodeToString(fileHierarchy) // сериализуем FileInfo в строку JSON
-
                         navController.navigate(
                             Screen.FolderAnalysisScreen(
                                 fileHierarchyInfo = fileHierarchy.toString()
                             )
                         )
-                        // TODO если открываем готовый анализ (не здесь!)
-                        /*navController.navigate(
-                            Screen.FolderAnalysisScreen(
-                                graphId = savedGraphId
-                            )
-                        )*/
                     }
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             painter = painterResource(id = R.drawable.flowchart_24px),
                             contentDescription = "Провести анализ",
-                            tint = MaterialTheme.colorScheme.surface
+                            tint = MaterialTheme.colorScheme.primary
                         )
-
                         Spacer(modifier = Modifier.width(16.dp))
-
                         Text("Провести анализ")
                     }
                 }
@@ -157,14 +144,6 @@ fun FileInfoDisplay(
                                                     id = child.fileInfo.uri
                                                 )
                                             )
-
-                                            /*if (fileHierarchy.children.isNotEmpty()) {
-                                            Log.i(
-                                                "first children",
-                                                fileHierarchy.children.first().fileInfo.uri
-                                            )
-                                        }*/
-
                                         } else {
                                             // Для файлов
                                             Log.i("child is singleFile", "$child")
@@ -234,7 +213,7 @@ fun FileInfoDisplay(
                                 Column {
                                     if (child.fileInfo.isDirectory) {
                                         Icon(
-                                            painter = painterResource(id = R.drawable.folder_24px),
+                                            painter = painterResource(id = R.drawable.empty_folder_24px),
                                             contentDescription = "Папка",
                                             tint = MaterialTheme.colorScheme.onSurface
                                         )
@@ -267,13 +246,11 @@ fun FileInfoDisplay(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
 
-                SimpleButton(
+                OpenDialogButton(
                     enabled = true,
-                    action = {
-                        //fileStructure.setCurrentlyViewedFile(fileInfo)
-
-                        //val json = Json.encodeToString(fileInfo) // сериализуем FileInfo в строку JSON
-
+                    dialogTitle = "Подтвердите действие",
+                    dialogText = "Вы действительно хотите запустить анализ файла?",
+                    onConfirm = {
                         // если запускаем новый анализ (перевод в FileHierarchy для системности).
                         //  создаю FileHierarchy напрямую, так как не работаю с DocumentFile API
                         navController.navigate(
@@ -283,19 +260,13 @@ fun FileInfoDisplay(
                                 ).toString()
                             )
                         )
-                        // TODO если открываем готовый анализ (не здесь!)
-                        /*navController.navigate(
-                            Screen.FileAnalysisScreen(
-                                graphId = savedGraphId
-                            )
-                        )*/
                     }
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             painter = painterResource(id = R.drawable.flowchart_24px),
                             contentDescription = "Провести анализ",
-                            tint = MaterialTheme.colorScheme.surface
+                            tint = MaterialTheme.colorScheme.primary
                         )
 
                         Spacer(modifier = Modifier.width(16.dp))
