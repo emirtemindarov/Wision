@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
@@ -40,6 +41,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
@@ -62,8 +64,8 @@ fun AppScaffold(
 ) {
 
     val backStackEntry by navController.currentBackStackEntryAsState()
-    val currentRoute = backStackEntry?.destination?.route
     val destination = backStackEntry?.destination
+    val currentRoute = backStackEntry?.destination?.route
 
     val isSavedTabSelected =
         destination?.hierarchy?.any {
@@ -96,12 +98,7 @@ fun AppScaffold(
                 containerColor = MaterialTheme.colorScheme.surface,
                 //titleContentColor = MaterialTheme.colorScheme.onSurface,
             ),
-            title = {
-                /*Text(
-                    text = "Начальный экран",
-                    style = MaterialTheme.typography.titleLarge
-                )*/
-            },
+            title = {},
             navigationIcon = {
                 IconButton(onClick = {}/*TODO onMenuClick*/) {
                     Icon(
@@ -145,84 +142,23 @@ fun AppScaffold(
     val regularTopAppBar: @Composable () -> Unit = {
 
         CenterAlignedTopAppBar(
+            modifier = Modifier.width(64.dp),
             colors = TopAppBarDefaults.topAppBarColors(
                 containerColor = Color.Transparent,
                 //containerColor = MaterialTheme.colorScheme.onPrimary,
                 titleContentColor = MaterialTheme.colorScheme.primary,
                 //actionIconContentColor = MaterialTheme.colorScheme.onPrimary
             ),
-            title = {
-                /*Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleLarge
-                )*/
-            },
+            title = {},
             navigationIcon = {
                 IconButton(onClick = { navController.popBackStack() }) {
                     Icon(
-                        painter = painterResource(id = R.drawable.arrow_left_alt_24px),
+                        painter = painterResource(id = R.drawable.keyboard_arrow_left_24px),
                         contentDescription = "Назад",
-                        tint = MaterialTheme.colorScheme.primary
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(28.dp)
                     )
                 }
-            },
-            actions = {
-                var menuExpanded by remember { mutableStateOf(false) } // состояние для контекстного меню справа сверху
-
-                IconButton(onClick = { menuExpanded = true }) {
-                    Icon(
-                        imageVector = Icons.Default.MoreVert,
-                        contentDescription = "Меню",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-
-
-                DropdownMenu(
-                    expanded = menuExpanded,
-                    onDismissRequest = { menuExpanded = false }
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("Настройки") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Settings,
-                                contentDescription = null
-                            )
-                        },
-                        onClick = {
-                            menuExpanded = false
-                            // TODO: переход в настройки
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("О приложении") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Info,
-                                contentDescription = null
-                            )
-                        },
-                        onClick = {
-                            menuExpanded = false
-                            // TODO: открыть экран About
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Выход") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ExitToApp,
-                                contentDescription = null
-                            )
-                        },
-                        onClick = {
-                            menuExpanded = false
-                            // TODO: выйти из приложения или выйти из аккаунта
-                        }
-                    )
-                }
-
             }
         )
     }
@@ -234,9 +170,6 @@ fun AppScaffold(
             containerColor = MaterialTheme.colorScheme.onPrimary,
             contentColor = MaterialTheme.colorScheme.primary
         ) {
-            // FIXME при быстром многократном переходе не успевает обновиться текст заголовка
-            //  (видно по шрифту что свойства меняются а текст в итоге не соответствует вкладке)
-            //  (возвращается к нормальному состоянию при медленном переключении)
             NavigationBarItem(
                 selected = isAnalysisTabSelected,
                 onClick = {
@@ -301,18 +234,7 @@ fun AppScaffold(
                     overflow = TextOverflow.Ellipsis
                 )
             },
-            /*navigationIcon = {
-                IconButton(onClick = { navController.popBackStack() }) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.arrow_left_alt_24px),
-                        contentDescription = "Назад",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-            },*/
             actions = {
-                var menuExpanded by remember { mutableStateOf(false) } // состояние для контекстного меню справа сверху
-
                 // TODO реализовать поисковую систему (окно поиска будет отдельным экраном с динамическими подсказками?)
                 Icon(
                     imageVector = Icons.Default.Search,
@@ -334,51 +256,6 @@ fun AppScaffold(
                 )
 
                 Spacer(modifier = Modifier.width(16.dp))
-
-                /*DropdownMenu(
-                    expanded = menuExpanded,
-                    onDismissRequest = { menuExpanded = false }
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("Настройки") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Settings,
-                                contentDescription = null
-                            )
-                        },
-                        onClick = {
-                            menuExpanded = false
-                            // TODO: переход в настройки
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("О приложении") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Info,
-                                contentDescription = null
-                            )
-                        },
-                        onClick = {
-                            menuExpanded = false
-                            // TODO: открыть экран About
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Выход") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ExitToApp,
-                                contentDescription = null
-                            )
-                        },
-                        onClick = {
-                            menuExpanded = false
-                            // TODO: выйти из приложения или выйти из аккаунта
-                        }
-                    )
-                }*/
 
             }
         )

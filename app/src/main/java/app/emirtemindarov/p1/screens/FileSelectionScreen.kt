@@ -30,14 +30,21 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.compose.currentBackStackEntryAsState
 import app.emirtemindarov.p1.Environment
 import app.emirtemindarov.p1.R
+import app.emirtemindarov.p1.Screen
 import app.emirtemindarov.p1.animations.FileSelectionAnimationV6
 import app.emirtemindarov.p1.components.FakeTopBarTitle
 import app.emirtemindarov.p1.components.buttons.BorderedButton
 import app.emirtemindarov.p1.components.buttons.ComplexButton
+import app.emirtemindarov.p1.components.buttons.OpenDialogButton
 import app.emirtemindarov.p1.components.buttons.SimpleButton
+import app.emirtemindarov.p1.components.buttons.ToolButton
+import app.emirtemindarov.p1.components.buttons.ToolButtonWithBottomDialog
+import app.emirtemindarov.p1.components.buttons.ToolButtonWithSimpleTopRightDialog
+import app.emirtemindarov.p1.components.buttons.ToolButtonWithTopDialog
 import app.emirtemindarov.p1.components.dividers.AutoDivider
 import app.emirtemindarov.p1.components.dividers.HorizontalDivider
 import app.emirtemindarov.p1.components.dividers.VerticalDivider
+import app.emirtemindarov.p1.mvvm.data.FileHierarchy
 import app.emirtemindarov.p1.mvvm.singleFile.SingleFileViewModel
 
 // При выборе файла не переходит на FileDetailsScreen, отображая все здесь
@@ -59,12 +66,13 @@ fun FileSelectionScreen(
 
     val fileLoading = remember { mutableStateOf(false) }
 
-    // Перехват системной кнопки "Назад"
+    // обработчик системной кнопки "Назад"
     BackHandler {
         Log.i("BackHandler", "from FileSelectionScreen")
         navController.popBackStack()
     }
 
+    // обработчик выбора новой папки
     val fileLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
@@ -82,6 +90,24 @@ fun FileSelectionScreen(
         }
     }
 
+    //  кнопка выбора нового файла - иконка
+    val newFileIcon: @Composable () -> Unit = {
+        ToolButtonWithSimpleTopRightDialog(
+            enabled = true,
+            confirmText = "Выбрать новый файл",
+            onConfirm = {
+                fileLauncher.launch(arrayOf("*/*"))
+            }
+        ) {
+            Icon(
+                painter = painterResource(id = R.drawable.reset_focus_24px),
+                contentDescription = "Выбрать новый файл",
+                tint = MaterialTheme.colorScheme.primary
+            )
+        }
+    }
+
+    // кнопка выбора нового файла - иконка с текстом
     val newFileButton: @Composable () -> Unit = {
         ComplexButton(
             action = { fileLauncher.launch(arrayOf("*/*")) },
@@ -96,17 +122,25 @@ fun FileSelectionScreen(
 
                 Spacer(modifier = Modifier.width(16.dp))
 
-                Text("Выбрать новый файл")
+                Text(
+                    "Выбрать новый файл",
+                    fontFamily = FontFamily.SansSerif
+                )
             }
         }
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
 
-        // fake topAppBar title
+        // заменяет scaffold.topbar
         FakeTopBarTitle(
-            title = uiState.singleFile?.name.orEmpty(),
-            modifier = Modifier.weight(0.125f)
+            fileInfo = uiState.singleFile,
+            modifier = Modifier.weight(0.125f),
+            buttons = singleFile?.let {
+                listOf(
+                    newFileIcon            //R.drawable.reset_focus_24px
+                )
+            }.orEmpty()
         )
 
         // "истинное" содержимое скаффолда
@@ -125,8 +159,6 @@ fun FileSelectionScreen(
                 Text("FileSelectionScreen")
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
-
             // файл не выбран
             singleFile ?: run {
                 if (fileLoading.value) {
@@ -143,7 +175,7 @@ fun FileSelectionScreen(
 
                 Spacer(modifier = Modifier.height(50.dp))
 
-                newFileButton.invoke()   // выполнение composable хранящегося в переменной
+                newFileButton()
 
                 Spacer(modifier = Modifier.height(150.dp))
             }
@@ -152,9 +184,9 @@ fun FileSelectionScreen(
             // файл выбран
             singleFile?.let { file ->
 
-                newFileButton.invoke()   // выполнение composable хранящегося в переменной
+                /*newFileButton()
 
-                HorizontalDivider(top = 24.dp, padding = 48.dp)
+                HorizontalDivider(top = 24.dp, padding = 48.dp)*/
 
                 FileInfoDisplay(
                     fileInfo = file,

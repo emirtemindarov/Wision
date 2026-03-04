@@ -9,7 +9,7 @@ import app.emirtemindarov.p1.components.dialogs.ConfirmationBottomDialog
 
 @Composable
 fun OpenDialogButton(
-    enabled: Boolean,
+    enabled: Boolean = true,
     dialogTitle: String,
     dialogText: String,
     confirmText: String = "Подтвердить",

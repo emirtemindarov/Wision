@@ -26,17 +26,16 @@ import app.emirtemindarov.p1.Screen
 import app.emirtemindarov.p1.mvvm.originalroot.OriginalRootViewModel
 import app.emirtemindarov.p1.mvvm.data.FileHierarchy
 
-// TODO проверить отображение при большом названии файла или папки !!!
-
 @Composable
 fun FileHierarchyDisplay(
     fileHierarchy: FileHierarchy,
     originalRootViewModel: OriginalRootViewModel,
     navController: NavHostController,
+    isRoot: Boolean = false
 ) {
 
     Log.i("checkpoint FHDisplay", "FHD")
-    Log.i("fileHierarchy.fileInfo.uri", fileHierarchy.fileInfo.uri.toString())
+    Log.i("fileHierarchy.fileInfo.uri", fileHierarchy.fileInfo.uri)
 
     val folderUri = fileHierarchy.fileInfo.uri.toUri()
     val folded = originalRootViewModel.isFolderFolded(folderUri)
@@ -45,7 +44,7 @@ fun FileHierarchyDisplay(
 
     // блок содержащий строку
     Column(
-        modifier = Modifier.padding(start = 26.dp),
+        modifier = Modifier.padding(start = 26.dp)/*.background(Color.Yellow)*/,
     ) {
 
         // Тестовая метка уровня
@@ -132,7 +131,7 @@ fun FileHierarchyDisplay(
                     if (hasContent) {
                         Icon(
                             painter = painterResource(
-                                id = if (folded)
+                                if (folded)
                                     R.drawable.keyboard_arrow_right_24px
                                 else
                                     R.drawable.keyboard_arrow_down_24px
@@ -146,7 +145,12 @@ fun FileHierarchyDisplay(
 
                         // Иконка не пустой папки
                         Icon(
-                            painter = painterResource(R.drawable.folder_24px),
+                            painter = painterResource(
+                                if (isRoot)
+                                    R.drawable.home_24px
+                                else
+                                    R.drawable.folder_24px
+                            ),
                             contentDescription = "Папка",
                             tint = MaterialTheme.colorScheme.onSurface
                         )
@@ -157,7 +161,12 @@ fun FileHierarchyDisplay(
 
                         // Иконка пустой папки
                         Icon(
-                            painter = painterResource(id = R.drawable.empty_folder_24px),
+                            painter = painterResource(
+                                if (isRoot)
+                                    R.drawable.home_24px
+                                else
+                                    R.drawable.empty_folder_24px
+                            ),
                             contentDescription = "Папка",
                             tint = MaterialTheme.colorScheme.onSurface
                         )

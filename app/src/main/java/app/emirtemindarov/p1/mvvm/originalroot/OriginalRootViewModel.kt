@@ -39,7 +39,7 @@ class OriginalRootViewModel : ViewModel(), FileStructureInterface {
 
 
     // TODO заменить DocumentFile на android.provider.DocumentsContract
-    fun loadAndSetOriginalRoot(context: Context, folder: DocumentFile) {
+    fun loadAndSetOriginalRoot(context: Context, folder: DocumentFile, backStackEntryId: String?) {
         viewModelScope.launch {
             clear()
             val originalHierarchy = buildFileHierarchy(
@@ -48,6 +48,7 @@ class OriginalRootViewModel : ViewModel(), FileStructureInterface {
                 originalUri = folder.uri
             )
             setOriginalRoot(originalHierarchy)
+            setOriginalRootBackStackEntryId(backStackEntryId)
         }
     }
 
@@ -65,6 +66,12 @@ class OriginalRootViewModel : ViewModel(), FileStructureInterface {
         ) }
     }
 
+    fun setOriginalRootBackStackEntryId(backStackEntryId: String?) {
+        _state.update { it.copy(
+            originalRootBackStackEntryId = backStackEntryId
+        ) }
+    }
+
     // Вызывается при гарантированном существовании папки
     fun getOriginalRootUri(): Uri? {
         return _state.value.originalRoot?.fileInfo?.uri?.toUri()
@@ -77,6 +84,11 @@ class OriginalRootViewModel : ViewModel(), FileStructureInterface {
 
     override fun getCurrentlyViewedFile(): FileInfo? {
         return _state.value.currentlyViewedFile
+    }
+
+    fun getOriginalRootBackStackEntryId(): String? {
+        Log.i("state.value.originalRootBackStackEntryId", "${state.value.originalRootBackStackEntryId}")
+        return state.value.originalRootBackStackEntryId
     }
 
     fun clear() {

@@ -53,6 +53,7 @@ fun AppNavigation(
     val singleFileViewModel: SingleFileViewModel = viewModel()
 
     val backStackEntry by navController.currentBackStackEntryAsState()
+    Log.i("backStackEntry", "$backStackEntry")
 
     NavHost(
         navController = navController,
@@ -202,7 +203,7 @@ fun AppNavigation(
                     navController = navController,
                     onGraphClick = { graph ->
                         navController.navigate(
-                            Screen.FileAnalysisScreen(
+                            Screen.FileAnalysisScreen(  // !!!! FIXME либо определять на какой экран отправлять, либо унифицировать экран анализа для папок или файлов
                                 graphId = graph.graphId,
                                 fileInfo = null // или если есть
                             )

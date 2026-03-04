@@ -23,18 +23,3 @@ data class RenderEdge(
     val from: RenderNode,
     val to: RenderNode
 )
-
-/*
-fun RenderNode.contains(
-    tap: Offset,
-    center: Offset,
-    scale: Float,
-    offset: Offset
-): Boolean {
-
-    val nodePos = center + position * scale + offset
-    val radius = defaultRadius * scale
-
-    return (tap - nodePos).getDistance() <= radius
-}
-*/

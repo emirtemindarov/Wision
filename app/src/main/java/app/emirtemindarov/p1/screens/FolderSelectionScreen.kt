@@ -39,7 +39,12 @@ import app.emirtemindarov.p1.R
 import app.emirtemindarov.p1.animations.FolderSelectionAnimationV1
 import app.emirtemindarov.p1.components.FakeTopBarTitle
 import app.emirtemindarov.p1.components.buttons.ComplexButton
+import app.emirtemindarov.p1.components.buttons.OpenDialogButton
 import app.emirtemindarov.p1.components.buttons.SimpleButton
+import app.emirtemindarov.p1.components.buttons.ToolButton
+import app.emirtemindarov.p1.components.buttons.ToolButtonWithBottomDialog
+import app.emirtemindarov.p1.components.buttons.ToolButtonWithSimpleTopRightDialog
+import app.emirtemindarov.p1.components.buttons.ToolButtonWithTopDialog
 import app.emirtemindarov.p1.components.dividers.HorizontalDivider
 import app.emirtemindarov.p1.mvvm.originalroot.OriginalRootViewModel
 import kotlin.math.abs
@@ -54,6 +59,10 @@ fun FolderSelectionScreen(
 
     originalRootViewModel.debug()
 
+    val backStackEntry by navController.currentBackStackEntryAsState()
+    val destination = backStackEntry?.destination
+    val currentRoute = destination?.route
+
     Log.d("FolderSelectionScreen", originalRootViewModel.getCurrentlyViewedFile()?.name.orEmpty())
 
     val context = LocalContext.current
@@ -64,7 +73,7 @@ fun FolderSelectionScreen(
 
     val folderLoading = remember { mutableStateOf(false) }
 
-    // Перехват системной кнопки "Назад"
+    // обработчик системной кнопки "Назад"
     BackHandler {
         Log.i("BackHandler", "from FileSelectionScreen")
         navController.popBackStack()
@@ -83,11 +92,53 @@ fun FolderSelectionScreen(
             documentFile?.let { folder ->
                 Log.i("folderLauncher", "$folder")
 
-                originalRootViewModel.loadAndSetOriginalRoot(context, folder)
+                originalRootViewModel.loadAndSetOriginalRoot(
+                    context,
+                    folder,
+                    currentRoute
+                )
             }
         }
     }
 
+    /*//  кнопка возврата на корневую папку - иконка
+    val backToOriginalRootIcon: @Composable () -> Unit = {
+        ToolButton(
+            action = {
+                originalRootViewModel.getOriginalRootBackStackEntryId()?.let { route ->
+                    navController.popBackStack(
+                        route,
+                        inclusive = false
+                    )
+                }
+            }
+        ) {
+            Icon(
+                painter = painterResource(id = R.drawable.home_24px),
+                contentDescription = "Выбрать новый файл",
+                tint = MaterialTheme.colorScheme.primary
+            )
+        }
+    }*/
+
+    //  кнопка открытия новой папки - иконка
+    val newFolderIcon: @Composable () -> Unit = {
+        ToolButtonWithSimpleTopRightDialog(
+            enabled = true,
+            confirmText = "Выбрать новую папку",
+            onConfirm = {
+                folderLauncher.launch(null)
+            }
+        ) {
+            Icon(
+                painter = painterResource(id = R.drawable.reset_focus_24px),
+                contentDescription = "Выбрать новую папку",
+                tint = MaterialTheme.colorScheme.primary
+            )
+        }
+    }
+
+    // кнопка открытия новой папки - иконка с текстом
     val newFolderButton: @Composable () -> Unit = {
         ComplexButton(
             action = { folderLauncher.launch(null) },
@@ -102,17 +153,26 @@ fun FolderSelectionScreen(
 
                 Spacer(modifier = Modifier.width(16.dp))
 
-                Text("Выбрать новую папку")
+                Text(
+                    "Выбрать новую папку",
+                    fontFamily = FontFamily.SansSerif
+                )
             }
         }
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
 
-        // fake topAppBar title
+        // заменяет scaffold.topbar
         FakeTopBarTitle(
-            title = uiState.originalRoot?.fileInfo?.name.orEmpty(),
-            modifier = Modifier.weight(0.125f)
+            fileInfo = uiState.originalRoot?.fileInfo,
+            modifier = Modifier.weight(0.125f),
+            buttons = currentHierarchy?.let {
+                listOf(
+                    //backToOriginalRootIcon,    //R.drawable.home_24px
+                    newFolderIcon,             //R.drawable.reset_focus_24px
+                )
+            }.orEmpty()
         )
 
         // "истинное" содержимое скаффолда
@@ -148,7 +208,7 @@ fun FolderSelectionScreen(
 
                     Spacer(modifier = Modifier.height(50.dp))
 
-                    newFolderButton.invoke()   // выполнение composable хранящегося в переменной
+                    newFolderButton()
 
                     Spacer(modifier = Modifier.height(150.dp))
                 }
@@ -157,9 +217,9 @@ fun FolderSelectionScreen(
             // папка выбрана
             currentHierarchy?.let { currentHierarchy ->
 
-                newFolderButton.invoke()
+                //newFolderButton()
 
-                HorizontalDivider(top = 24.dp, bottom = 24.dp, padding = 48.dp)
+                //HorizontalDivider(top = 24.dp, bottom = 24.dp, padding = 48.dp)
 
                 Text(text = "Иерархия папки:", style = MaterialTheme.typography.titleMedium)
                 Spacer(modifier = Modifier.height(8.dp))
@@ -177,6 +237,7 @@ fun FolderSelectionScreen(
                             fileHierarchy = currentHierarchy,
                             originalRootViewModel = originalRootViewModel,
                             navController = navController,
+                            isRoot = true
                         )
                     }
                 }

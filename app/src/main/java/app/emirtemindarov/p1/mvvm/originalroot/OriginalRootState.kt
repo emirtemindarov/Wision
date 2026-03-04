@@ -10,5 +10,8 @@ data class OriginalRootState(
     val originalRoot: FileHierarchy? = null,
 
     // текущий просматриваемый файл или папка
-    val currentlyViewedFile: FileInfo? = null
+    val currentlyViewedFile: FileInfo? = null,
+
+    // для возвращения к корню папки
+    val originalRootBackStackEntryId: String? = null,
 )

@@ -32,6 +32,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -43,9 +44,11 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import app.emirtemindarov.p1.BuildConfig
 import app.emirtemindarov.p1.Environment
+import app.emirtemindarov.p1.R
 import app.emirtemindarov.p1.Screen
 import app.emirtemindarov.p1.components.FakeTopBarTitle
 import app.emirtemindarov.p1.components.FileInfoDisplay
+import app.emirtemindarov.p1.components.buttons.ToolButton
 import app.emirtemindarov.p1.mvvm.data.FileInfo
 import app.emirtemindarov.p1.mvvm.originalroot.OriginalRootViewModel
 import app.emirtemindarov.p1.utils.FileUtils
@@ -69,12 +72,38 @@ fun FolderDetailsScreen(
         navController.popBackStack()
     }
 
+    //  кнопка возврата на корневую папку - иконка
+    val backToOriginalRootIcon: @Composable () -> Unit = {
+        ToolButton(
+            action = {
+                originalRootViewModel.getOriginalRootBackStackEntryId()?.let { route ->
+                    navController.popBackStack(
+                        route,
+                        inclusive = false
+                    )
+                }
+            }
+        ) {
+            Icon(
+                painter = painterResource(id = R.drawable.home_24px),
+                contentDescription = "Выбрать новый файл",
+                tint = MaterialTheme.colorScheme.primary
+            )
+        }
+    }
+
     Column(modifier = Modifier.fillMaxSize()) {
 
+        // FIXME title иногда мерцает при переключении, возможно проблема в анимации переключении экранов?
         // fake topAppBar title
         FakeTopBarTitle(
-            title = uiState.currentlyViewedFile?.name.orEmpty(),
-            modifier = Modifier.weight(0.125f)
+            fileInfo = uiState.currentlyViewedFile,
+            modifier = Modifier.weight(0.125f),
+            buttons = originalRootViewModel.getOriginalRoot()?.let {
+                listOf(
+                    backToOriginalRootIcon
+                )
+            }.orEmpty()
         )
 
         // "истинное" содержимое скаффолда
