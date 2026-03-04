@@ -19,8 +19,6 @@ import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.unit.IntSize
 //import app.emirtemindarov.p1.assistant.data.Edge
 import app.emirtemindarov.p1.assistant.data.GraphModel
 import app.emirtemindarov.p1.render.data.RenderGraph
@@ -29,6 +27,7 @@ import app.emirtemindarov.p1.render.data.RenderNode
 import app.emirtemindarov.p1.utils.colorForType
 //import app.emirtemindarov.p1.assistant.data.Node
 import kotlin.math.cos
+import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
 
@@ -559,9 +558,31 @@ fun RenderNode.contains(
     tap: Offset,
     camera: CameraState
 ): Boolean {
+
+    val baseWidth = 260f
+    val headerHeight = 70f
+    val lineHeight = 36f
+
+    val memberCount = if (expanded) children.size else 0
+
+    val height = headerHeight + (memberCount * lineHeight)
+
+    val topLeftWorld = position - Offset(baseWidth / 2f, height / 2f)
+    val bottomRightWorld = position + Offset(baseWidth / 2f, height / 2f)
+
+    val tapWorld = camera.screenToWorld(tap)
+
+    return tapWorld.x in topLeftWorld.x..bottomRightWorld.x &&
+            tapWorld.y in topLeftWorld.y..bottomRightWorld.y
+}
+
+/*fun RenderNode.contains(
+    tap: Offset,
+    camera: CameraState
+): Boolean {
     val worldTap = camera.screenToWorld(tap)
     return (worldTap - position).getDistance() <= defaultRadius
-}
+}*/
 
 // Самая удачная версия
 @Composable
@@ -780,6 +801,241 @@ fun GraphRenderV3M3(
                     }
                 )
             }
+        }
+    }
+}
+
+@Composable
+fun GraphRenderV4(
+    renderGraph: RenderGraph,
+    camera: CameraState,
+    mainElementName: String,
+    modifier: Modifier = Modifier
+) {
+    val textColor = MaterialTheme.colorScheme.onSurface
+
+    // обновление UI
+    var redrawTrigger by remember { mutableIntStateOf(0) }
+    Log.i("redrawTriggerValue", "$redrawTrigger")
+
+    Canvas(
+        modifier = modifier
+            .fillMaxSize()
+            .clipToBounds()
+            .cameraGestures(camera)
+            .pointerInput(renderGraph, redrawTrigger) {
+                detectTapGestures { tap ->
+                    renderGraph.nodes
+                        .firstOrNull { it.contains(tap, camera) }
+                        ?.let { node ->
+                            if (node.children.isNotEmpty()) {
+                                node.expanded = !node.expanded
+                                redrawTrigger++
+                            }
+                        }
+                }
+            }
+    ) {
+        // установил для обновления UI при изменении
+        redrawTrigger
+
+        fun isVisible(node: RenderNode): Boolean {
+            var current: RenderNode? = node
+            while (current != null) {
+                val parent = renderGraph.nodes.firstOrNull { it.children.contains(current) }
+                if (parent != null && !parent.expanded) return false
+                current = parent
+            }
+            return true
+        }
+
+        // --- edges ---
+        renderGraph.edges
+            .filter {
+                it.data.type != "contained_in" &&
+                        it.data.type != "defines" &&
+                        isVisible(it.from) &&
+                        isVisible(it.to)
+            }
+            .forEach { edge ->
+                val color = when (edge.data.type) {
+                    "extends" -> Color(0xFF8E44AD)
+                    "implements" -> Color(0xFF16A085)
+                    "calls" -> Color(0xFFD35400)
+                    "uses" -> Color(0xFFF39C12)
+                    "imports" -> Color(0xFF607D8B)
+                    else -> Color.Gray
+                }
+
+                drawLine(
+                    color = color.copy(alpha = 0.6f),
+                    start = camera.worldToScreen(edge.from.position),
+                    end = camera.worldToScreen(edge.to.position),
+                    strokeWidth = when (edge.data.type) {
+                        "extends", "implements" -> 4f * camera.scale
+                        "calls" -> 3f * camera.scale
+                        else -> 2f * camera.scale
+                    }
+                )
+            }
+
+        // --- nodes ---
+        renderGraph.nodes
+            .filter { isVisible(it) }
+            .forEach { node ->
+
+                val pos = camera.worldToScreen(node.position)
+
+                // контейнер
+                if (node.expanded && node.children.isNotEmpty()) {
+
+                    val visibleChildren = node.children
+
+                    val minX = visibleChildren.minOf { it.position.x }
+                    val maxX = visibleChildren.maxOf { it.position.x }
+                    val minY = visibleChildren.minOf { it.position.y }
+                    val maxY = visibleChildren.maxOf { it.position.y }
+
+                    val padding = 150f
+
+                    val topLeftWorld = Offset(
+                        minX - padding,
+                        minY - padding
+                    )
+
+                    val bottomRightWorld = Offset(
+                        maxX + padding,
+                        maxY + padding
+                    )
+
+                    val topLeft = camera.worldToScreen(topLeftWorld)
+                    val size = Size(
+                        (bottomRightWorld.x - topLeftWorld.x) * camera.scale,
+                        (bottomRightWorld.y - topLeftWorld.y) * camera.scale
+                    )
+
+                    drawRoundRect(
+                        color = Color(0xFFEEEEEE),
+                        topLeft = topLeft,
+                        size = size,
+                        cornerRadius = CornerRadius(20f * camera.scale)
+                    )
+                }
+
+                // для карточки
+                var baseWidth = 250f
+                val headerHeight = 70f
+                val lineHeight = 36f
+
+                val updateWidth: (Float) -> Unit = { measured ->
+                    val padded = measured + 40f
+                    if (padded > baseWidth) {
+                        baseWidth = padded
+                    }
+                }
+
+                val memberCount =
+                    if (node.expanded)
+                        (node.data.properties?.signature?.params?.size ?: 0) + node.children.size
+                    else 0
+
+                val height =
+                    headerHeight + (memberCount * lineHeight)
+
+                val topLeftWorld = node.position - Offset(baseWidth / 2f, height / 2f)
+                val topLeft = camera.worldToScreen(topLeftWorld)
+
+                val size = Size(
+                    baseWidth * camera.scale,
+                    height * camera.scale
+                )
+
+                // карточка (контейнер)
+                drawRoundRect(
+                    color = colorForType(node.data.type),
+                    topLeft = topLeft,
+                    size = size,
+                    cornerRadius = CornerRadius(18f * camera.scale)
+                )
+
+                val textPaint = Paint().apply {
+                    color = textColor.toArgb()
+                    textSize = 34f * camera.scale.coerceAtMost(1.5f)
+                    isAntiAlias = true
+                }
+
+                // заголовок
+                drawContext.canvas.nativeCanvas.drawText(
+                    node.data.label,
+                    topLeft.x + 20f * camera.scale,
+                    topLeft.y + 45f * camera.scale,
+                    textPaint
+                )
+
+                val headerMeasured = textPaint.measureText(node.data.label) / camera.scale
+                updateWidth(headerMeasured)
+
+                Log.i("node_expanded", "${node.expanded}")
+                if (node.expanded) {
+
+                    // разделитель
+                    drawLine(
+                        color = Color.Black.copy(alpha = 0.2f),
+                        start = Offset(
+                            topLeft.x,
+                            topLeft.y + headerHeight * camera.scale
+                        ),
+                        end = Offset(
+                            topLeft.x + baseWidth * camera.scale,
+                            topLeft.y + headerHeight * camera.scale
+                        ),
+                        strokeWidth = 2f * camera.scale
+                    )
+
+                    Log.i("node_data_properties", "${node.data.properties}")
+                    // временная замена свойств и методов
+                    node.data.properties?.signature?.params?.forEachIndexed { index, param ->
+
+                        val modifiersText = param.modifiers
+                            ?.takeIf { it.isNotEmpty() }
+                            ?.joinToString(separator = " ", postfix = " ")
+                            ?: ""
+
+                        val nullableText = if (param.nullable_type) "?" else ""
+
+                        val paramText = buildString {
+                            append(modifiersText)
+                            append(param.label)
+                            append(": ")
+                            append(param.type)
+                            append(nullableText)
+                        }
+
+                        val measured = Paint().apply {
+                            textSize = 28f * camera.scale.coerceAtMost(1.4f)
+                        }.measureText(paramText) / camera.scale
+
+                        updateWidth(measured)
+
+                        drawContext.canvas.nativeCanvas.drawText(
+
+                            paramText,
+                            /*"${param.modifiers?.forEach { modifier -> modifier }}${param.label}: ${param.type}${if (param.nullable_type) "- nullable" else ""}",*/
+
+                            topLeft.x + 20f * camera.scale,
+                            topLeft.y +
+                                    headerHeight * camera.scale +
+                                    (index + 1) * lineHeight * camera.scale,
+                            Paint().apply {
+                                color = textColor.toArgb()
+                                textSize =
+                                    28f * camera.scale.coerceAtMost(1.4f)   // TODO текст должен расширять размер контейнера при переполнении
+                                textAlign = Paint.Align.LEFT
+                                isAntiAlias = true
+                            }
+                        )
+                    }
+                }
         }
     }
 }

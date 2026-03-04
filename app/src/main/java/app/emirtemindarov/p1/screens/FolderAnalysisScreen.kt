@@ -11,11 +11,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -28,6 +31,7 @@ import app.emirtemindarov.p1.R
 import app.emirtemindarov.p1.animations.FileAnalysisAnimation
 import app.emirtemindarov.p1.assistant.AssistantStage
 import app.emirtemindarov.p1.assistant.AssistantViewModel
+import app.emirtemindarov.p1.components.buttons.CircleButton
 import app.emirtemindarov.p1.components.buttons.GraphButton
 import app.emirtemindarov.p1.render.GraphRenderV2
 import app.emirtemindarov.p1.components.buttons.SimpleButton
@@ -35,6 +39,7 @@ import app.emirtemindarov.p1.render.CameraState
 import app.emirtemindarov.p1.render.GraphRenderV3
 import app.emirtemindarov.p1.render.GraphRenderV3M2
 import app.emirtemindarov.p1.render.GraphRenderV3M3
+import app.emirtemindarov.p1.render.GraphRenderV4
 import app.emirtemindarov.p1.room.GraphLoadMode
 import app.emirtemindarov.p1.utils.LogUtils.logLong
 import app.emirtemindarov.p1.utils.toRenderGraph
@@ -127,7 +132,7 @@ fun FolderAnalysisScreen(
 
                     val camera = remember { CameraState() }
 
-                    GraphRenderV3M2(
+                    GraphRenderV4(
                         renderGraph = graph.toRenderGraph(layoutID),
                         camera = camera,
                         mainElementName = graph.nodes.first().label
@@ -147,17 +152,16 @@ fun FolderAnalysisScreen(
                             .align(Alignment.TopStart)   // закрепить в левом верхнем углу
                             .padding(16.dp)
                     ) {
-                        SimpleButton(
-                            enabled = true,
+                        CircleButton(
                             action = {
                                 assistantViewModel.reset()
                                 navController.popBackStack()
                             }
                         ) {
                             Icon(
-                                painter = painterResource(id = R.drawable.arrow_left_alt_24px),
-                                contentDescription = "Назад",
-                                tint = MaterialTheme.colorScheme.onPrimary
+                                painter = painterResource(R.drawable.close_24px),
+                                contentDescription = "Закрыть",
+                                tint = MaterialTheme.colorScheme.onSurface
                             )
                         }
                     }

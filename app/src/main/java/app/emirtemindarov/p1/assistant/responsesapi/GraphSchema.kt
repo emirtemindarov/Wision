@@ -22,7 +22,65 @@ object GraphSchema {
                             "properties" to mapOf(
                                 "path" to mapOf("type" to listOf("string", "null")),
                                 "lines" to mapOf("type" to listOf("integer", "null")),
-                                "signature" to mapOf("type" to listOf("string", "null")),
+                                "signature" to mapOf(
+                                    "type" to "object",
+                                    "additionalProperties" to false,
+                                    "properties" to mapOf(
+                                        "params" to mapOf(
+                                            "type" to listOf("array", "null"),
+                                            "items" to mapOf(
+                                                "type" to "object",
+                                                "additionalProperties" to false,
+                                                "properties" to mapOf(
+                                                    "label" to mapOf("type" to "string"),
+                                                    "type" to mapOf("type" to "string"),
+                                                    "nullable_type" to mapOf("type" to "boolean"),
+                                                    "default_value" to mapOf("type" to listOf("string", "null")),
+                                                    "modifiers" to mapOf(
+                                                        "type" to listOf("array", "null"),
+                                                        "items" to mapOf("type" to "string")
+                                                    )
+                                                ),
+                                                "required" to listOf(
+                                                    "label",
+                                                    "type",
+                                                    "nullable_type",
+                                                    "default_value",
+                                                    "modifiers"
+                                                )
+                                            )
+                                        ),
+                                        "generics" to mapOf(
+                                            "type" to listOf("array", "null"),
+                                            "items" to mapOf("type" to "string")
+                                        ),
+                                        "return_type" to mapOf("type" to listOf("string", "null")),
+                                        "nullable_return_type" to mapOf("type" to listOf("boolean", "null")),
+                                        "modifiers" to mapOf(
+                                            "type" to listOf("array", "null"),
+                                            "items" to mapOf("type" to "string")
+                                        ),
+                                        "exceptions" to mapOf(
+                                            "type" to listOf("array", "null"),
+                                            "items" to mapOf("type" to "string")
+                                        ),
+                                        "namespace" to mapOf("type" to listOf("string", "null")),
+                                        "annotations" to mapOf(
+                                            "type" to listOf("array", "null"),
+                                            "items" to mapOf("type" to "string")
+                                        )
+                                    ),
+                                    "required" to listOf(
+                                        "params",
+                                        "generics",
+                                        "return_type",
+                                        "nullable_return_type",
+                                        "modifiers",
+                                        "exceptions",
+                                        "namespace",
+                                        "annotations"
+                                    )
+                                ),
                                 "visibility" to mapOf("type" to listOf("string", "null")),
                                 "typeName" to mapOf("type" to listOf("string", "null")),
                                 "children_ids" to mapOf(
@@ -31,14 +89,24 @@ object GraphSchema {
                                 )
                             ),
                             "required" to listOf(
-                                "path", "lines", "signature",
-                                "visibility", "typeName", "children_ids"
+                                "path",
+                                "lines",
+                                "signature",
+                                "visibility",
+                                "typeName",
+                                "children_ids"
                             )
                         )
                     ),
                     "required" to listOf(
-                        "id", "label", "type", "subtype",
-                        "color", "description", "inferred", "properties"
+                        "id",
+                        "label",
+                        "type",
+                        "subtype",
+                        "color",
+                        "description",
+                        "inferred",
+                        "properties"
                     ),
                     "additionalProperties" to false
                 )

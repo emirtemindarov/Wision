@@ -98,7 +98,8 @@ fun applyVerticalTreeLayout(
         val children = node.children
         if (children.isEmpty()) return
 
-        val totalWidth = (children.size - 1) * siblingGap
+        val dynamicGap = siblingGap + node.children.size * 40f
+        val totalWidth = (children.size - 1) * dynamicGap
         val startX = node.position.x - totalWidth / 2
 
         children.forEachIndexed { index, child ->
