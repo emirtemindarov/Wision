@@ -1,227 +1,148 @@
 package app.emirtemindarov.p1.utils
 
+import android.util.Log
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import app.emirtemindarov.p1.assistant.data.EdgeType
 import app.emirtemindarov.p1.assistant.data.GraphModel
+import app.emirtemindarov.p1.assistant.data.NodeType
 import app.emirtemindarov.p1.render.data.RenderEdge
 import app.emirtemindarov.p1.render.data.RenderGraph
 import app.emirtemindarov.p1.render.data.RenderNode
+import app.emirtemindarov.p1.utils.LogUtils.logLong
 import kotlin.math.cos
 import kotlin.math.sin
 
-// Работает - не трожь!
+fun GraphModel.toRenderGraph(): RenderGraph {
 
-fun GraphModel.toRenderGraph(layout: Int = 1): RenderGraph {
+    val nodes = mutableMapOf<String, RenderNode>()
 
-    // 1) Создаём RenderNode для каждого узла
-    val renderNodes = nodes.associate { node ->
-        node.id to RenderNode(data = node)
-    }.toMutableMap()
-
-    // 2) Связываем узлы по children_ids (вложенность)
-    renderNodes.values.forEach { renderNode ->
-        val children = renderNode.data.properties?.children_ids ?: return@forEach
-        children.forEach { childId ->
-            val childNode = renderNodes[childId]
-            if (childNode != null) {
-                renderNode.children += childNode
-            }
-        }
+    // this = graph
+    this.nodes.forEach { node ->
+        nodes[node.id] = RenderNode(
+            id = node.id,
+            data = node,
+            position = Offset.Zero   // ?
+        )
     }
 
-    // 3) Создаём связи RenderEdge
-    val renderEdges = edges.mapNotNull { edge ->
-        val from = renderNodes[edge.from]
-        val to = renderNodes[edge.to]
-
-        if (from != null && to != null) {
-            RenderEdge(edge, from, to)
-        } else null
+    val edges = this.edges.map { edge ->
+        RenderEdge(edge)
     }
 
-    // 4) Раскладка узлов
-    when (layout) {
-        1 -> applyInitialCircleLayout(renderNodes.values.toList())
-        2 -> applyRadialTreeLayout(renderNodes.values.toList())
-        3 -> applyHorizontalTreeLayout(renderNodes.values.toList())
-        4 -> applyVerticalTreeLayout(renderNodes.values.toList())
-    }
-
-    return RenderGraph(
-        nodes = renderNodes.values.toList(),
-        edges = renderEdges
+    val renderGraph = RenderGraph(
+        nodes,
+        edges,
+        focusNodeId = this.nodes.first().id
     )
+    Log.i("focusNodeId_GraphUtils", renderGraph.focusNodeId)
+
+    logLong("renderGraph", "$renderGraph")
+
+    return renderGraph
 }
 
-fun applyInitialCircleLayout(nodes: List<RenderNode>) {
-    if (nodes.isEmpty()) return
-
+fun layout(graph: RenderGraph, focusId: String) {
     val center = Offset(0f, 0f)
-    val radius = 1500f
-    val angleStep = (Math.PI * 2 / nodes.size).toFloat()
+    graph.nodes[focusId]?.position = center
 
-    nodes.forEachIndexed { index, node ->
-        val angle = index * angleStep
+    val outgoing = graph.edges.filter { it.data.from == focusId }
+    val incoming = graph.edges.filter { it.data.to == focusId }
+
+    val contains = outgoing.filter { it.data.type == EdgeType.CONTAINS }
+    val uses = outgoing.filter { it.data.type == EdgeType.USES }
+
+    val parents = incoming.filter { it.data.type == EdgeType.INHERITS }
+    val usedBy = incoming.filter { it.data.type == EdgeType.CALLS || it.data.type == EdgeType.IMPLEMENTS }
+
+    val horizontalSpacing = 900f   // между группами (лево/право)
+    val verticalSpacing = 600f     // между группами (верх/низ)
+
+    placeColumn(graph, contains, -horizontalSpacing, 0f, focusId)     // слева (внутренности)
+    placeColumn(graph, uses, horizontalSpacing, 0f, focusId)          // справа (использует)
+
+    placeColumn(graph, parents, 0f, -verticalSpacing, focusId)      // сверху (кто содержит)
+    placeColumn(graph, usedBy, 0f, verticalSpacing, focusId)        // снизу (кто использует)
+}
+
+fun placeColumn(
+    graph: RenderGraph,
+    edges: List<RenderEdge>,
+    baseX: Float,
+    baseY: Float,
+    focusId: String
+) {
+    edges.forEachIndexed { index, edge ->
+        val nodeId = if (edge.data.from == focusId) {
+            edge.data.to
+        } else {
+            edge.data.from
+        }
+
+        val node = graph.nodes[nodeId] ?: return@forEachIndexed
+
+        val nodeSpacingY = 250f   // вертикальное расстояние внутри группы
+        val nodeSpacingX = 120f   // небольшой “разброс” по X
+
         node.position = Offset(
-            x = center.x + radius * cos(angle),
-            y = center.y + radius * sin(angle)
+            baseX + (index % 2) * nodeSpacingX,
+            baseY + index * nodeSpacingY
         )
     }
 }
 
-fun applyVerticalTreeLayout(
-    nodes: List<RenderNode>,
-    levelGap: Float = 300f,
-    siblingGap: Float = 900f
-) {
-    if (nodes.isEmpty()) return
+data class GraphColumns(
+    val center: RenderNode?,
+    val left: List<RenderNode>,
+    val right: List<RenderNode>,
+    val top: List<RenderNode>,
+    val bottom: List<RenderNode>,
+)
 
-    // --- 1) Ищем корни
-    val allChildren = nodes.flatMap { it.children }
-    val roots = nodes.filter { it !in allChildren }
+fun buildColumns(graph: RenderGraph): GraphColumns {
+    val focusId = graph.focusNodeId
+    val center = graph.nodes[focusId]
 
-    // Если нет корней — рисуем просто вертикальный список
-    if (roots.isEmpty()) {
-        nodes.forEachIndexed { index, node ->
-            node.position = Offset(0f, index * levelGap)
-        }
-        return
-    }
+    val outgoing = graph.edges.filter { it.data.from == focusId }
+    val incoming = graph.edges.filter { it.data.to == focusId }
 
-    // --- 2) Позиционируем корни по горизонтали
-    roots.forEachIndexed { i, root ->
-        root.position = Offset(i * siblingGap, 0f)
-    }
+    val left = outgoing
+        .filter { it.data.type == EdgeType.CONTAINS }
+        .mapNotNull { graph.nodes[it.data.to] }
 
-    // --- 3) Рекурсивный layout детей
-    fun layout(node: RenderNode, depth: Int) {
-        val children = node.children
-        if (children.isEmpty()) return
+    val right = outgoing
+        .filter { it.data.type != EdgeType.CONTAINS }
+        .mapNotNull { graph.nodes[it.data.to] }
 
-        val dynamicGap = siblingGap + node.children.size * 40f
-        val totalWidth = (children.size - 1) * dynamicGap
-        val startX = node.position.x - totalWidth / 2
+    val top = incoming
+        .filter { it.data.type == EdgeType.CONTAINS }
+        .mapNotNull { graph.nodes[it.data.from] }
 
-        children.forEachIndexed { index, child ->
-            child.position = Offset(
-                x = startX + index * siblingGap,
-                y = depth * levelGap
-            )
-            layout(child, depth + 1)
-        }
-    }
+    val bottom = incoming
+        .filter { it.data.type != EdgeType.CONTAINS }
+        .mapNotNull { graph.nodes[it.data.from] }
 
-    // --- Запуск для всех корней
-    roots.forEach { layout(it, 1) }
+    return GraphColumns(center, left, right, top, bottom)
 }
 
-fun applyHorizontalTreeLayout(
-    nodes: List<RenderNode>,
-    levelGap: Float = 900f,
-    siblingGap: Float = 300f
-) {
-    if (nodes.isEmpty()) return
-
-    // --- 1) Ищем корни
-    val allChildren = nodes.flatMap { it.children }
-    val roots = nodes.filter { it !in allChildren }
-
-    if (roots.isEmpty()) {
-        nodes.forEachIndexed { index, node ->
-            node.position = Offset(index * levelGap, 0f)
-        }
-        return
-    }
-
-    // --- 2) Размещаем корни вертикально
-    roots.forEachIndexed { i, root ->
-        root.position = Offset(0f, i * siblingGap)
-    }
-
-    // --- 3) Дети справа
-    fun layout(node: RenderNode, depth: Int) {
-        val children = node.children
-        if (children.isEmpty()) return
-
-        val totalHeight = (children.size - 1) * siblingGap
-        val startY = node.position.y - totalHeight / 2
-
-        children.forEachIndexed { index, child ->
-            child.position = Offset(
-                x = depth * levelGap,
-                y = startY + index * siblingGap
-            )
-            layout(child, depth + 1)
-        }
-    }
-
-    roots.forEach { layout(it, 1) }
+// TODO использовать приятные для глаза цвета
+fun colorForType(type: NodeType): Color = when (type) {
+    NodeType.FILE -> Color(0xFF2196F3)
+    NodeType.FOLDER -> Color(0xFFFF9800)
+    NodeType.CLASS -> Color(0xFF4CAF50)
+    NodeType.INTERFACE -> Color(0xFFDDEA1E)
+    NodeType.FUNCTION -> Color(0xFF2C47D5)
+    NodeType.VARIABLE -> Color(0xFFBA68C8)
+    NodeType.BLOCK -> Color(0xFF795548)
+    NodeType.OBJECT -> Color(0xFF90A4AE)
 }
 
-fun applyRadialTreeLayout(
-    nodes: List<RenderNode>,
-    levelRadius: Float = 400f
-) {
-    if (nodes.isEmpty()) return
-
-    // --- 1) Ищем корневые узлы (те, кто ни у кого не в children)
-    val allChildren = nodes.flatMap { it.children }
-    val roots = nodes.filter { it !in allChildren }
-
-    // Если корней нет — fallback на простую окружность
-    if (roots.isEmpty()) {
-        applyInitialCircleLayout(nodes)
-        return
-    }
-
-    // --- 2) Распределяем корни по кругу
-    val rootAngleStep = (Math.PI * 2 / roots.size).toFloat()
-
-    roots.forEachIndexed { index, root ->
-        val angle = index * rootAngleStep
-        root.position = Offset(
-            x = (0f + levelRadius * cos(angle)).toFloat(),
-            y = (0f + levelRadius * sin(angle)).toFloat()
-        )
-    }
-
-    // --- 3) Рекурсивно раскладываем детей
-    fun layoutSubtree(node: RenderNode, depth: Int, startAngle: Float, endAngle: Float) {
-        val children = node.children
-        if (children.isEmpty()) return
-
-        val step = (endAngle - startAngle) / children.size
-        val nextRadius = (depth + 1) * levelRadius
-
-        children.forEachIndexed { index, child ->
-            val a1 = startAngle + index * step
-            val a2 = a1 + step
-            val angle = (a1 + a2) / 2f
-
-            child.position = Offset(
-                x = (nextRadius * cos(angle)).toFloat(),
-                y = (nextRadius * sin(angle)).toFloat()
-            )
-
-            layoutSubtree(child, depth + 1, a1, a2)
-        }
-    }
-
-    // --- 4) Запускаем для всех корней
-    roots.forEachIndexed { i, root ->
-        val start = i * rootAngleStep
-        val end = start + rootAngleStep
-        layoutSubtree(root, 1, start, end)
-    }
-}
-
-fun colorForType(type: String): Color = when (type) {
-    "file" -> Color(0xFF4CAF50)
-    "class" -> Color(0xFF2196F3)
-    "function" -> Color(0xFFFF9800)
-    "variable" -> Color(0xFF9C27B0)
-    "block" -> Color(0xFF795548)
-    else -> Color(0xFF90A4AE)
+fun edgeColor(type: EdgeType): Color = when(type) {
+    EdgeType.CONTAINS -> Color.Gray
+    EdgeType.USES -> Color.Blue
+    EdgeType.CALLS -> Color.Green
+    EdgeType.IMPLEMENTS -> Color.Magenta
+    EdgeType.INHERITS -> Color.Red
 }
 
 /*

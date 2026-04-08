@@ -213,6 +213,7 @@ fun AppNavigation(
             }
         }
 
+        // TODO анализ на одном экране (неважно папка или файл)
         // можно перейти с любой вкладки
         composable<Screen.FileAnalysisScreen> {
             val args = it.toRoute<Screen.FileAnalysisScreen>()
@@ -223,6 +224,7 @@ fun AppNavigation(
                 navController = navController,
             )
         }
+        // TODO убрать
         // можно перейти с любой вкладки
         composable<Screen.FolderAnalysisScreen> {
             val args = it.toRoute<Screen.FolderAnalysisScreen>()

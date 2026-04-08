@@ -11,7 +11,18 @@ object GraphSchema {
                     "properties" to mapOf(
                         "id" to mapOf("type" to "string"),
                         "label" to mapOf("type" to "string"),
-                        "type" to mapOf("type" to "string"),
+                        "type" to mapOf(
+                            "enum" to listOf(
+                                "FILE",
+                                "FOLDER",
+                                "CLASS",
+                                "INTERFACE",
+                                "FUNCTION",
+                                "VARIABLE",
+                                "BLOCK",
+                                "OBJECT",
+                            )
+                        ),
                         "subtype" to mapOf("type" to listOf("string", "null")),
                         "color" to mapOf("type" to listOf("string", "null")),
                         "description" to mapOf("type" to listOf("string", "null")),
@@ -83,10 +94,6 @@ object GraphSchema {
                                 ),
                                 "visibility" to mapOf("type" to listOf("string", "null")),
                                 "typeName" to mapOf("type" to listOf("string", "null")),
-                                "children_ids" to mapOf(
-                                    "type" to listOf("array", "null"),
-                                    "items" to mapOf("type" to "string")
-                                )
                             ),
                             "required" to listOf(
                                 "path",
@@ -94,7 +101,6 @@ object GraphSchema {
                                 "signature",
                                 "visibility",
                                 "typeName",
-                                "children_ids"
                             )
                         )
                     ),
@@ -118,7 +124,15 @@ object GraphSchema {
                     "properties" to mapOf(
                         "from" to mapOf("type" to "string"),
                         "to" to mapOf("type" to "string"),
-                        "type" to mapOf("type" to "string"),
+                        "type" to mapOf(
+                            "enum" to listOf(
+                                "CONTAINS",
+                                "USES",
+                                "CALLS",
+                                "IMPLEMENTS",
+                                "INHERITS"
+                            )
+                        ),
                         "properties" to mapOf(
                             "type" to listOf("object", "null"),
                             "additionalProperties" to false,

@@ -32,16 +32,12 @@ import app.emirtemindarov.p1.assistant.AssistantStage
 import app.emirtemindarov.p1.assistant.AssistantViewModel
 import app.emirtemindarov.p1.components.buttons.CircleButton
 import app.emirtemindarov.p1.components.buttons.GraphButton
-import app.emirtemindarov.p1.render.GraphRenderV2
 import app.emirtemindarov.p1.components.buttons.SimpleButton
 import app.emirtemindarov.p1.render.CameraState
-//import app.emirtemindarov.p1.render.GraphRenderV2M2
-import app.emirtemindarov.p1.render.GraphRenderV3
-import app.emirtemindarov.p1.render.GraphRenderV3M2
-import app.emirtemindarov.p1.render.GraphRenderV3M3
-import app.emirtemindarov.p1.render.GraphRenderV4
+import app.emirtemindarov.p1.render.GraphRenderV2
 import app.emirtemindarov.p1.room.GraphLoadMode
 import app.emirtemindarov.p1.utils.LogUtils.logLong
+import app.emirtemindarov.p1.utils.layout
 import app.emirtemindarov.p1.utils.toRenderGraph
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -111,40 +107,31 @@ fun FileAnalysisScreen(
                     "Nodes: ${graph.nodes.size}, Edges: ${graph.edges.size}"
                 )
 
-                val scale = remember { mutableFloatStateOf(1f) }
-                val offset = remember { mutableStateOf(Offset.Zero) }
+                /*val scale = remember { mutableFloatStateOf(1f) }
+                val offset = remember { mutableStateOf(Offset.Zero) }*/
 
                 Box(
                     modifier = Modifier
                         .weight(1f)
                         .clipToBounds()       // обрезка
                         .background(MaterialTheme.colorScheme.surface)    // было 0xFFE3F2FD
-                        .pointerInput(Unit) {
+                        /*.pointerInput(Unit) {
                             detectTransformGestures { _, pan, zoom, _ ->
                                 scale.floatValue = (scale.floatValue * zoom).coerceIn(0.3f, 4f)
                                 offset.value += pan
                             }
-                        }
+                        }*/
                 ) {
 
-                    var layoutID by remember { mutableIntStateOf(1)}
-                    if (layoutID > 4) { layoutID = 1 }
+                    /*var layoutID by remember { mutableIntStateOf(1)}
+                    if (layoutID > 4) { layoutID = 1 }*/
 
                     val camera = remember { CameraState() }
 
-                    GraphRenderV4(
-                        renderGraph = graph.toRenderGraph(layoutID),
-                        camera = camera,
-                        mainElementName = graph.nodes.first().label
+                    GraphRenderV2(
+                        graph = graph,
+                        camera = camera
                     )
-
-                    /*GraphRenderV2(
-                        renderGraph = graph.toRenderGraph(layoutID),
-                        scale = scale,
-                        offset = offset,
-                        mainElementName = graph.nodes.first().label,
-                        modifier = Modifier.fillMaxSize()
-                    )*/
 
                     // Слева сверху
                     Column(
@@ -185,7 +172,7 @@ fun FileAnalysisScreen(
                             .padding(16.dp)
                     ) {
                         GraphButton(
-                            action = { scale.floatValue = 1f; offset.value = Offset.Zero }
+                            action = { /*scale.floatValue = 1f; offset.value = Offset.Zero*/ }
                         ) {
                             Icon(
                                 painter = painterResource(id = R.drawable.recenter_24px),
@@ -197,7 +184,7 @@ fun FileAnalysisScreen(
                         Spacer(modifier = Modifier.height(8.dp))
 
                         GraphButton(
-                            action = { layoutID += 1; scale.floatValue = 1f; offset.value = Offset.Zero }
+                            action = { /*layoutID += 1; scale.floatValue = 1f; offset.value = Offset.Zero*/ }
                         ) {
                             Icon(
                                 painter = painterResource(id = R.drawable.rebase_24px),
@@ -209,7 +196,7 @@ fun FileAnalysisScreen(
                         Spacer(modifier = Modifier.height(8.dp))
 
                         GraphButton(
-                            action = { scale.floatValue = (scale.floatValue * 1.2f).coerceAtMost(4f) }
+                            action = { /*scale.floatValue = (scale.floatValue * 1.2f).coerceAtMost(4f)*/ }
                         ) {
                             Icon(
                                 painter = painterResource(id = R.drawable.zoom_in_24px),
@@ -221,7 +208,7 @@ fun FileAnalysisScreen(
                         Spacer(modifier = Modifier.height(8.dp))
 
                         GraphButton(
-                            action = { scale.floatValue = (scale.floatValue / 1.2f).coerceAtLeast(0.3f) }
+                            action = { /*scale.floatValue = (scale.floatValue / 1.2f).coerceAtLeast(0.3f)*/ }
                         ) {
                             Icon(
                                 painter = painterResource(id = R.drawable.zoom_out_24px),

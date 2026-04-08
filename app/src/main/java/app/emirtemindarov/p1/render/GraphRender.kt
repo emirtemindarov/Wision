@@ -1,1041 +1,163 @@
 package app.emirtemindarov.p1.render
 
-import android.graphics.Paint
 import android.util.Log
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectTransformGestures
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.runtime.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
-import androidx.compose.ui.graphics.nativeCanvas
-import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.input.pointer.pointerInput
-//import app.emirtemindarov.p1.assistant.data.Edge
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.core.graphics.toColor
+import androidx.core.graphics.toColorInt
 import app.emirtemindarov.p1.assistant.data.GraphModel
-import app.emirtemindarov.p1.render.data.RenderGraph
-import app.emirtemindarov.p1.render.data.RenderNode
-//import app.emirtemindarov.p1.render.data.contains
-import app.emirtemindarov.p1.utils.colorForType
-//import app.emirtemindarov.p1.assistant.data.Node
-import kotlin.math.cos
-import kotlin.math.max
-import kotlin.math.min
-import kotlin.math.sin
-
-/*// заглушка
-@Composable
-fun GraphRenderPreview(
-    scale: Float,
-    offset: Offset,
-    modifier: Modifier = Modifier
-) {
-    val fakeGraph = GraphModel(
-        nodes = listOf(
-            Node(id = "A", label = "Alpha", type = "type1"),
-            Node(id = "B", label = "Beta", type = "type1"),
-            Node(id = "C", label = "Gamma", type = "type2"),
-            Node(id = "D", label = "Delta", type = "type2"),
-        ),
-        edges = listOf(
-            Edge(from = "A", to = "B", type = "link"),
-            Edge(from = "A", to = "C", type = "link"),
-            Edge(from = "B", to = "D", type = "link"),
-            Edge(from = "C", to = "D", type = "link"),
-        )
-    )
-
-    GraphRenderV1M3(
-        graph = fakeGraph,
-        scale = scale,
-        offset = offset,
-        modifier = modifier
-    )
-}*/
-
-@Composable
-fun GraphRenderV1M3(
-    graph: GraphModel,
-    scale: Float,
-    offset: Offset,
-    modifier: Modifier = Modifier
-) {
-
-    Box(
-        modifier = modifier
-    ) {
-
-        Canvas(modifier = Modifier.matchParentSize()) {
-            val canvasWidth = size.width
-            val canvasHeight = size.height
-
-            // === Фон всего полотна ===
-            drawRect(
-                color = Color(0xFFE3F2FD), // голубой
-                size = size,
-                topLeft = Offset.Zero
-            )
-            drawIntoCanvas {
-                it.nativeCanvas.drawText(
-                    "Полотно",
-                    40f,
-                    60f,
-                    Paint().apply {
-                        textSize = 40f
-                        color = android.graphics.Color.BLACK
-                    }
-                )
-            }
-
-            // === Центр полотна ===
-            val center = Offset(canvasWidth / 2, canvasHeight / 2)
-            drawCircle(
-                color = Color(0xFFFFCDD2), // розовый
-                radius = 150f,
-                center = center
-            )
-            drawIntoCanvas {
-                it.nativeCanvas.drawText(
-                    "Центр",
-                    center.x,
-                    center.y,
-                    Paint().apply {
-                        textSize = 40f
-                        color = android.graphics.Color.BLACK
-                    }
-                )
-            }
-
-            // === Область графа ===
-            val radius = min(canvasWidth, canvasHeight) / 3f
-            drawCircle(
-                color = Color(0xFFC8E6C9), // зелёный
-                radius = radius,
-                center = center,
-                alpha = 0.5f
-            )
-            drawIntoCanvas {
-                it.nativeCanvas.drawText(
-                    "Размер графа",
-                    center.x - radius,
-                    center.y - radius,
-                    Paint().apply {
-                        textSize = 40f
-                        color = android.graphics.Color.DKGRAY
-                    }
-                )
-            }
-
-            // --- Расчёт позиций узлов ---
-            val angleStep = (2 * Math.PI / graph.nodes.size).toFloat()
-            val nodePositions = mutableMapOf<String, Offset>()
-            graph.nodes.forEachIndexed { i, node ->
-                val angle = i * angleStep
-                val x = (canvasWidth / 2 + radius * cos(angle)).toFloat()
-                val y = (canvasHeight / 2 + radius * sin(angle)).toFloat()
-                nodePositions[node.id] = Offset(x, y)
-            }
-
-            // --- Рисуем связи ---
-            graph.edges.forEach { edge ->
-                val from = nodePositions[edge.from]
-                val to = nodePositions[edge.to]
-                if (from != null && to != null) {
-                    drawLine(
-                        color = Color.Gray,
-                        start = from * scale + offset,
-                        end = to * scale + offset,
-                        strokeWidth = 3f
-                    )
-                }
-            }
-
-            // --- Рисуем узлы ---
-            graph.nodes.forEach { node ->
-                val pos = nodePositions[node.id] ?: return@forEach
-                val finalPos = pos * scale + offset
-                drawCircle(
-                    color = Color.Blue,
-                    radius = 30f * scale,
-                    center = finalPos
-                )
-                // Подпись
-                drawIntoCanvas {
-                    it.nativeCanvas.drawText(
-                        node.label,
-                        finalPos.x + 40f,
-                        finalPos.y,
-                        Paint().apply {
-                            textSize = 32f * scale
-                            color = android.graphics.Color.BLACK
-                        }
-                    )
-                }
-            }
-        }
-    }
-
-}
+import app.emirtemindarov.p1.utils.buildColumns
+import app.emirtemindarov.p1.utils.layout
+import app.emirtemindarov.p1.utils.toRenderGraph
 
 @Composable
 fun GraphRenderV2(
-    renderGraph: RenderGraph,
-    scale: MutableFloatState,
-    offset: MutableState<Offset>,
-    mainElementName: String,
-    modifier: Modifier = Modifier
-) {
-    //var scale by remember { mutableFloatStateOf(1f) }
-    //var offset by remember { mutableStateOf(Offset.Zero) }
-    var selectedNode by remember { mutableStateOf<RenderNode?>(null) }
-
-    val textColor = MaterialTheme.colorScheme.onSurface
-
-    // FIXME Масштабирование работает некорректно когда граф не в центральной области
-    // Поддержка мультитач и перетаскивания
-    val gestureModifier = Modifier.pointerInput(Unit) {
-        detectTransformGestures { centroid, pan, zoom, _ ->
-            scale.floatValue = (scale.floatValue * zoom).coerceIn(0.3f, 4f)
-            offset.value += pan
-        }
-    }
-
-    Canvas(
-        modifier = modifier
-            .fillMaxSize()
-            .clipToBounds()
-            .then(gestureModifier)
-    ) {
-
-        val center = Offset(size.width / 2, size.height / 2)
-
-        // --- Рисуем узлы ---
-        renderGraph.nodes.forEach { node ->
-
-            Log.i("node", "$node")
-
-            val pos = center + node.position * scale.floatValue + offset.value
-
-            // FIXME Контейнер (если expanded)
-            if (node.expanded && node.children.isNotEmpty()) {
-                val width = node.defaultRadius * 4 * scale.floatValue
-                val height = node.defaultRadius * 4 * scale.floatValue
-
-                Log.i("node-children", "${node.children}")
-
-                drawRoundRect(
-                    color = Color(0xFFEEEEEE),
-                    topLeft = pos - Offset(width/2, height/2),
-                    size = Size(width, height),
-                    cornerRadius = CornerRadius(12f * scale.floatValue)
-                )
-            }
-
-            // Сам узел
-            drawCircle(
-                color = colorForType(node.data.type),
-                radius =
-                    when (node.data.type) {
-                        "file" -> 45f
-                        "folder" -> 60f
-                        "package" -> 80f
-                        "class" -> 40f
-                        "interface" -> 40f
-                        "function" -> 35f
-                        "method" -> 35f
-                        "variable" -> 20f
-                        "block" -> 40f
-                        "enum" -> 20f
-                        "constructor" -> 35f
-                        "object" -> 40f
-                        "extension" -> 35f
-                        else -> { node.defaultRadius}
-                    }
-                            *
-                    scale.floatValue
-                            +
-                    if (node.data.label == mainElementName) 10 else 0,
-                center = pos
-            )
-
-            drawContext.canvas.nativeCanvas.drawText(
-                node.data.label,
-                pos.x + node.defaultRadius * scale.floatValue + 10f,
-                pos.y,
-                Paint().apply {
-                    color = textColor.toArgb()
-                    textSize = 32f * scale.floatValue
-                }
-            )
-        }
-
-        // --- Рисуем связи ---
-        renderGraph.edges.forEach { edge ->
-
-            val start = center + edge.from.position * scale.floatValue + offset.value
-            val end = center + edge.to.position * scale.floatValue + offset.value
-
-            drawLine(
-                color = Color.Gray.copy(alpha = 0.5f),
-                start = start,
-                end = end,
-                strokeWidth = 2f * scale.floatValue
-            )
-        }
-
-
-    }
-
-    // FIXME не работает
-    // Клик по узлу (упрощённая логика)
-    LaunchedEffect(selectedNode) {
-        selectedNode?.let { node ->
-            // центрируем сцену на выбранном узле
-            offset.value = Offset.Zero - node.position * scale.floatValue + Offset(500f, 1000f)
-        }
-    }
-}
-
-/*@Composable
-fun GraphRenderV2M2(
-    renderGraph: RenderGraph,
-    scale: MutableFloatState,
-    offset: MutableState<Offset>,
-    mainElementName: String,
-    modifier: Modifier = Modifier
-) {
-
-    var canvasSize by remember { mutableStateOf(IntSize.Zero) }
-
-    val center = remember(canvasSize) {
-        Offset(canvasSize.width / 2f, canvasSize.height / 2f)
-    }
-
-    //var scale by remember { mutableFloatStateOf(1f) }
-    //var offset by remember { mutableStateOf(Offset.Zero) }
-
-    var selectedNode by remember { mutableStateOf<RenderNode?>(null) }
-
-    val textColor = MaterialTheme.colorScheme.onSurface
-
-    // FIXME Масштабирование работает некорректно когда граф не в центральной области
-    // Поддержка мультитач и перетаскивания
-    val gestureModifier = Modifier.pointerInput(Unit) {
-        detectTransformGestures { centroid, pan, zoom, _ ->
-
-            val oldScale = scale.floatValue
-            val newScale = (oldScale * zoom).coerceIn(0.3f, 4f)
-
-            val scaleFactor = newScale / oldScale
-
-            val worldCentroid = (centroid - center) / oldScale
-
-            offset.value =
-                offset.value - worldCentroid * (scaleFactor - 1f) + pan / newScale
-
-            scale.floatValue = newScale
-        }
-    }
-
-    val tapModifier = Modifier.pointerInput(renderGraph) {
-        detectTapGestures { tap ->
-
-            val hitNode = renderGraph.nodes.firstOrNull { node ->
-                node.contains(
-                    tap = tap,
-                    center = center,
-                    scale = scale.floatValue,
-                    offset = offset.value
-                )
-            }
-
-            hitNode?.let { node ->
-                node.expanded = !node.expanded
-                selectedNode = node
-            }
-        }
-    }
-
-    Canvas(
-        modifier = modifier
-            .fillMaxSize()
-            .clipToBounds()
-            .onSizeChanged { canvasSize = it }
-            .then(gestureModifier)    // TODO полезно
-            .then(tapModifier)
-    ) {
-
-        //val center = Offset(size.width / 2, size.height / 2)
-
-        // --- Рисуем узлы ---
-        renderGraph.nodes.forEach { node ->
-
-            Log.i("node", "$node")
-
-            val pos = center + node.position * scale.floatValue + offset.value
-
-            // FIXME не видел контейнеров (всегда ноды)
-            // Контейнер (если expanded)
-            if (node.expanded && node.children.isNotEmpty()) {
-                val width = node.defaultRadius * 4 * scale.floatValue
-                val height = node.defaultRadius * 4 * scale.floatValue
-
-                Log.i("node-children", "${node.children}")
-
-                drawRoundRect(
-                    color = Color(0xFFEEEEEE),
-                    topLeft = pos - Offset(width/2, height/2),
-                    size = Size(width, height),
-                    cornerRadius = CornerRadius(12f * scale.floatValue)
-                )
-            }
-
-            // Сам узел
-            drawCircle(
-                color = colorForType(node.data.type),
-                radius =
-                    when (node.data.type) {
-                        "file" -> 45f
-                        "folder" -> 60f
-                        "package" -> 80f
-                        "class" -> 40f
-                        "interface" -> 40f
-                        "function" -> 35f
-                        "method" -> 35f
-                        "variable" -> 20f
-                        "block" -> 40f
-                        "enum" -> 20f
-                        "constructor" -> 35f
-                        "object" -> 40f
-                        "extension" -> 35f
-                        else -> { node.defaultRadius}
-                    }
-                            *
-                            scale.floatValue
-                            +
-                            if (node.data.label == mainElementName) 10 else 0,
-                center = pos
-            )
-
-            drawContext.canvas.nativeCanvas.drawText(
-                node.data.label,
-                pos.x + node.defaultRadius * scale.floatValue + 10f,
-                pos.y,
-                Paint().apply {
-                    color = textColor.toArgb()
-                    textSize = 32f * scale.floatValue
-                }
-            )
-        }
-
-        // --- Рисуем связи ---
-        renderGraph.edges.forEach { edge ->
-
-            val start = center + edge.from.position * scale.floatValue + offset.value
-            val end = center + edge.to.position * scale.floatValue + offset.value
-
-            drawLine(
-                color = Color.Gray.copy(alpha = 0.5f),
-                start = start,
-                end = end,
-                strokeWidth = 2f * scale.floatValue
-            )
-        }
-
-
-    }
-
-    // FIXME не работает
-    // Клик по узлу (упрощённая логика)
-    LaunchedEffect(selectedNode) {
-        selectedNode?.let { node ->
-            offset.value = -node.position * scale.floatValue
-        }
-    }
-}*/
-
-@Composable
-fun GraphRenderV3(
-    renderGraph: RenderGraph,
-    modifier: Modifier = Modifier
-) {
-    val scale = remember { mutableFloatStateOf(1f) }
-    val offset = remember { mutableStateOf(Offset.Zero) }
-
-    val gestureModifier = Modifier.pointerInput(Unit) {
-        detectTransformGestures { centroid, pan, zoom, _ ->
-
-            val oldScale = scale.floatValue
-            val newScale = (oldScale * zoom).coerceIn(0.3f, 4f)
-
-            // 1. мировая точка под пальцами ДО зума
-            val worldPoint = (centroid - offset.value) / oldScale
-
-            // 2. обновляем scale
-            scale.floatValue = newScale
-
-            // 3. компенсируем offset, чтобы фокус остался под пальцами
-            offset.value = centroid - worldPoint * newScale + pan
-        }
-    }
-
-
-    Canvas(
-        modifier = modifier
-            .fillMaxSize()
-            .clipToBounds()
-            .then(gestureModifier)
-    ) {
-
-        renderGraph.nodes.forEach { node ->
-
-            val pos = node.position * scale.floatValue + offset.value
-
-            drawCircle(
-                color = Color.Blue,
-                radius = node.defaultRadius * scale.floatValue,
-                center = pos
-            )
-        }
-
-        renderGraph.edges.forEach { edge ->
-            drawLine(
-                color = Color.Gray,
-                start = edge.from.position * scale.floatValue + offset.value,
-                end = edge.to.position * scale.floatValue + offset.value,
-                strokeWidth = 2f * scale.floatValue
-            )
-        }
-    }
-}
-
-@Stable
-class CameraState(
-    scale: Float = 1f,
-    offset: Offset = Offset.Zero
-) {
-    var scale by mutableFloatStateOf(scale)
-    var offset by mutableStateOf(offset)
-
-    fun worldToScreen(world: Offset): Offset =
-        world * scale + offset
-
-    fun screenToWorld(screen: Offset): Offset =
-        (screen - offset) / scale
-}
-
-fun Modifier.cameraGestures(
-    camera: CameraState,
-    minScale: Float = 0.3f,
-    maxScale: Float = 4f
-): Modifier = pointerInput(Unit) {
-
-    detectTransformGestures { centroid, pan, zoom, _ ->
-
-        val oldScale = camera.scale
-        val newScale = (oldScale * zoom).coerceIn(minScale, maxScale)
-
-        // мировая точка под пальцами ДО зума
-        val worldFocus = camera.screenToWorld(centroid)
-
-        camera.scale = newScale
-
-        // сдвиг так, чтобы worldFocus осталась под centroid
-        camera.offset =
-            centroid - worldFocus * newScale + pan
-    }
-}
-
-fun RenderNode.contains(
-    tap: Offset,
+    graph: GraphModel,
     camera: CameraState
-): Boolean {
-
-    val baseWidth = 260f
-    val headerHeight = 70f
-    val lineHeight = 36f
-
-    val memberCount = if (expanded) children.size else 0
-
-    val height = headerHeight + (memberCount * lineHeight)
-
-    val topLeftWorld = position - Offset(baseWidth / 2f, height / 2f)
-    val bottomRightWorld = position + Offset(baseWidth / 2f, height / 2f)
-
-    val tapWorld = camera.screenToWorld(tap)
-
-    return tapWorld.x in topLeftWorld.x..bottomRightWorld.x &&
-            tapWorld.y in topLeftWorld.y..bottomRightWorld.y
-}
-
-/*fun RenderNode.contains(
-    tap: Offset,
-    camera: CameraState
-): Boolean {
-    val worldTap = camera.screenToWorld(tap)
-    return (worldTap - position).getDistance() <= defaultRadius
-}*/
-
-// Самая удачная версия
-@Composable
-fun GraphRenderV3M2(
-    renderGraph: RenderGraph,
-    camera: CameraState,
-    mainElementName: String,
-    modifier: Modifier = Modifier
 ) {
-    val textColor = MaterialTheme.colorScheme.onSurface
-
-    // обновление UI
-    var redrawTrigger by remember { mutableIntStateOf(0) }
-    Log.i("redrawTriggerValue", "$redrawTrigger")
-
-    Canvas(
-        modifier = modifier
-            .fillMaxSize()
-            .clipToBounds()
-            .cameraGestures(camera)
-            .pointerInput(renderGraph, redrawTrigger) {
-                detectTapGestures { tap ->
-                    renderGraph.nodes
-                        .firstOrNull { it.contains(tap, camera) }
-                        ?.let { node ->
-                            node.expanded = !node.expanded
-                            redrawTrigger++
-                        }
-                }
-            }
-    ) {
-        // установил для обновления UI при изменении
-        redrawTrigger
-
-        // --- edges ---
-        renderGraph.edges.forEach { edge ->
-            drawLine(
-                color = Color.Gray.copy(alpha = 0.5f),
-                start = camera.worldToScreen(edge.from.position),
-                end = camera.worldToScreen(edge.to.position),
-                strokeWidth = 2f * camera.scale
-            )
-        }
-
-        // --- nodes ---
-        renderGraph.nodes.forEach { node ->
-
-            val pos = camera.worldToScreen(node.position)
-
-            // контейнер
-            if (node.expanded && node.children.isNotEmpty()) {
-                val size = node.defaultRadius * 4f
-                val topLeft =
-                    camera.worldToScreen(
-                        node.position - Offset(size / 2, size / 2)
-                    )
-
-                drawRoundRect(
-                    color = Color(0xFFEEEEEE),
-                    topLeft = topLeft,
-                    size = Size(size, size) * camera.scale,
-                    cornerRadius = CornerRadius(12f * camera.scale)
-                )
-            }
-
-            // радиус узла
-            val radius =
-                when (node.data.type) {
-                    "file" -> 45f
-                    "folder" -> 60f
-                    "package" -> 80f
-                    "class", "interface" -> 40f
-                    "function", "method", "constructor", "extension" -> 35f
-                    "variable", "enum" -> 20f
-                    "block", "object" -> 40f
-                    else -> node.defaultRadius
-                } * camera.scale +
-                        if (node.data.label == mainElementName) 10f else 0f
-
-            // узел
-            drawCircle(
-                color = colorForType(node.data.type),
-                radius = radius,
-                center = pos
-            )
-
-            // подпись
-            drawContext.canvas.nativeCanvas.drawText(
-                node.data.label,
-                pos.x + radius + 10f,
-                pos.y,
-                Paint().apply {
-                    color = textColor.toArgb()
-                    textSize = 32f * camera.scale.coerceAtMost(1.5f)
-                    isAntiAlias = true
-                }
-            )
-        }
-    }
-}
-
-fun RenderNode.childrenBounds(): Rect {
-    if (children.isEmpty()) {
-        return Rect(position, Size.Zero)
+    var focusId by remember(graph) {
+        mutableStateOf(graph.nodes.firstOrNull()?.id)
     }
 
-    val minX = children.minOf { it.position.x - it.defaultRadius }
-    val maxX = children.maxOf { it.position.x + it.defaultRadius }
-    val minY = children.minOf { it.position.y - it.defaultRadius }
-    val maxY = children.maxOf { it.position.y + it.defaultRadius }
-
-    return Rect(
-        offset = Offset(minX, minY),
-        size = Size(maxX - minX, maxY - minY)
-    )
-}
-
-@Composable
-fun GraphRenderV3M3(
-    renderGraph: RenderGraph,
-    camera: CameraState,
-    mainElementName: String,
-    modifier: Modifier = Modifier
-) {
-    val textColor = MaterialTheme.colorScheme.onSurface
-
-    // обновление UI
-    var redrawTrigger by remember { mutableIntStateOf(0) }
-    Log.i("redrawTriggerValue", "$redrawTrigger")
-
-    Canvas(
-        modifier = modifier
-            .fillMaxSize()
-            .clipToBounds()
-            .cameraGestures(camera)
-            .pointerInput(renderGraph, redrawTrigger) {
-                detectTapGestures { tap ->
-                    renderGraph.nodes
-                        .firstOrNull { it.contains(tap, camera) }
-                        ?.let { node ->
-                            node.expanded = !node.expanded
-                            redrawTrigger++
-                        }
-                }
-            }
-    ) {
-        // установил для обновления UI при изменении
-        redrawTrigger
-
-        // --- edges ---
-        renderGraph.edges.forEach { edge ->
-            drawLine(
-                color = Color.Gray.copy(alpha = 0.5f),
-                start = camera.worldToScreen(edge.from.position),
-                end = camera.worldToScreen(edge.to.position),
-                strokeWidth = 2f * camera.scale
-            )
-        }
-
-        // --- nodes ---
-        renderGraph.nodes.forEach { node ->
-
-            val parentCollapsed = renderGraph.nodes.any { parent ->
-                parent.children.contains(node) && !parent.expanded
-            }
-
-            if (!parentCollapsed) {
-
-                val pos = camera.worldToScreen(node.position)
-
-                // контейнер
-                if (node.expanded && node.children.isNotEmpty()) {
-
-                    val bounds = node.childrenBounds()
-                    val topLeft = camera.worldToScreen(bounds.topLeft)
-                    val size = bounds.size * camera.scale
-
-                    drawRoundRect(
-                        color = Color(0xFFEEEEEE),
-                        topLeft = topLeft,
-                        size = size,
-                        cornerRadius = CornerRadius(16f * camera.scale)
-                    )
-                }
-
-                // радиус узла
-                val radius =
-                    when (node.data.type) {
-                        "file" -> 45f
-                        "folder" -> 60f
-                        "package" -> 80f
-                        "class", "interface" -> 40f
-                        "function", "method", "constructor", "extension" -> 35f
-                        "variable", "enum" -> 20f
-                        "block", "object" -> 40f
-                        else -> node.defaultRadius
-                    } * camera.scale +
-                            if (node.data.label == mainElementName) 10f else 0f
-
-                // узел
-                drawCircle(
-                    color = colorForType(node.data.type),
-                    radius = radius,
-                    center = pos
-                )
-
-                // подпись
-                drawContext.canvas.nativeCanvas.drawText(
-                    node.data.label,
-                    pos.x + radius + 10f,
-                    pos.y,
-                    Paint().apply {
-                        color = textColor.toArgb()
-                        textSize = 32f * camera.scale.coerceAtMost(1.5f)
-                        isAntiAlias = true
-                    }
-                )
-            }
-        }
+    val renderGraph = remember(graph, focusId) {
+        graph.toRenderGraph().copy(
+            focusNodeId = focusId ?: graph.nodes.first().id
+        )
     }
-}
 
-@Composable
-fun GraphRenderV4(
-    renderGraph: RenderGraph,
-    camera: CameraState,
-    mainElementName: String,
-    modifier: Modifier = Modifier
-) {
-    val textColor = MaterialTheme.colorScheme.onSurface
+    var viewportSize by remember { mutableStateOf(Size.Zero) }
 
-    // обновление UI
-    var redrawTrigger by remember { mutableIntStateOf(0) }
-    Log.i("redrawTriggerValue", "$redrawTrigger")
+    val columns = remember(renderGraph) {
+        buildColumns(renderGraph)
+    }
 
-    Canvas(
-        modifier = modifier
-            .fillMaxSize()
-            .clipToBounds()
-            .cameraGestures(camera)
-            .pointerInput(renderGraph, redrawTrigger) {
-                detectTapGestures { tap ->
-                    renderGraph.nodes
-                        .firstOrNull { it.contains(tap, camera) }
-                        ?.let { node ->
-                            if (node.children.isNotEmpty()) {
-                                node.expanded = !node.expanded
-                                redrawTrigger++
-                            }
-                        }
-                }
-            }
+    GraphViewport(
+        camera = camera,
+        onSizeChanged = { viewportSize = it }
     ) {
-        // установил для обновления UI при изменении
-        redrawTrigger
 
-        fun isVisible(node: RenderNode): Boolean {
-            var current: RenderNode? = node
-            while (current != null) {
-                val parent = renderGraph.nodes.firstOrNull { it.children.contains(current) }
-                if (parent != null && !parent.expanded) return false
-                current = parent
-            }
-            return true
-        }
+        Column(modifier = Modifier
+            .size(900.dp)
+            .background(Color.Green),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
 
-        // --- edges ---
-        renderGraph.edges
-            .filter {
-                it.data.type != "contained_in" &&
-                        it.data.type != "defines" &&
-                        isVisible(it.from) &&
-                        isVisible(it.to)
-            }
-            .forEach { edge ->
-                val color = when (edge.data.type) {
-                    "extends" -> Color(0xFF8E44AD)
-                    "implements" -> Color(0xFF16A085)
-                    "calls" -> Color(0xFFD35400)
-                    "uses" -> Color(0xFFF39C12)
-                    "imports" -> Color(0xFF607D8B)
-                    else -> Color.Gray
-                }
-
-                drawLine(
-                    color = color.copy(alpha = 0.6f),
-                    start = camera.worldToScreen(edge.from.position),
-                    end = camera.worldToScreen(edge.to.position),
-                    strokeWidth = when (edge.data.type) {
-                        "extends", "implements" -> 4f * camera.scale
-                        "calls" -> 3f * camera.scale
-                        else -> 2f * camera.scale
-                    }
-                )
-            }
-
-        // --- nodes ---
-        renderGraph.nodes
-            .filter { isVisible(it) }
-            .forEach { node ->
-
-                val pos = camera.worldToScreen(node.position)
-
-                // контейнер
-                if (node.expanded && node.children.isNotEmpty()) {
-
-                    val visibleChildren = node.children
-
-                    val minX = visibleChildren.minOf { it.position.x }
-                    val maxX = visibleChildren.maxOf { it.position.x }
-                    val minY = visibleChildren.minOf { it.position.y }
-                    val maxY = visibleChildren.maxOf { it.position.y }
-
-                    val padding = 150f
-
-                    val topLeftWorld = Offset(
-                        minX - padding,
-                        minY - padding
-                    )
-
-                    val bottomRightWorld = Offset(
-                        maxX + padding,
-                        maxY + padding
-                    )
-
-                    val topLeft = camera.worldToScreen(topLeftWorld)
-                    val size = Size(
-                        (bottomRightWorld.x - topLeftWorld.x) * camera.scale,
-                        (bottomRightWorld.y - topLeftWorld.y) * camera.scale
-                    )
-
-                    drawRoundRect(
-                        color = Color(0xFFEEEEEE),
-                        topLeft = topLeft,
-                        size = size,
-                        cornerRadius = CornerRadius(20f * camera.scale)
-                    )
-                }
-
-                // для карточки
-                var baseWidth = 250f
-                val headerHeight = 70f
-                val lineHeight = 36f
-
-                val updateWidth: (Float) -> Unit = { measured ->
-                    val padded = measured + 40f
-                    if (padded > baseWidth) {
-                        baseWidth = padded
-                    }
-                }
-
-                val memberCount =
-                    if (node.expanded)
-                        (node.data.properties?.signature?.params?.size ?: 0) + node.children.size
-                    else 0
-
-                val height =
-                    headerHeight + (memberCount * lineHeight)
-
-                val topLeftWorld = node.position - Offset(baseWidth / 2f, height / 2f)
-                val topLeft = camera.worldToScreen(topLeftWorld)
-
-                val size = Size(
-                    baseWidth * camera.scale,
-                    height * camera.scale
-                )
-
-                // карточка (контейнер)
-                drawRoundRect(
-                    color = colorForType(node.data.type),
-                    topLeft = topLeft,
-                    size = size,
-                    cornerRadius = CornerRadius(18f * camera.scale)
-                )
-
-                val textPaint = Paint().apply {
-                    color = textColor.toArgb()
-                    textSize = 34f * camera.scale.coerceAtMost(1.5f)
-                    isAntiAlias = true
-                }
-
-                // заголовок
-                drawContext.canvas.nativeCanvas.drawText(
-                    node.data.label,
-                    topLeft.x + 20f * camera.scale,
-                    topLeft.y + 45f * camera.scale,
-                    textPaint
-                )
-
-                val headerMeasured = textPaint.measureText(node.data.label) / camera.scale
-                updateWidth(headerMeasured)
-
-                Log.i("node_expanded", "${node.expanded}")
-                if (node.expanded) {
-
-                    // разделитель
-                    drawLine(
-                        color = Color.Black.copy(alpha = 0.2f),
-                        start = Offset(
-                            topLeft.x,
-                            topLeft.y + headerHeight * camera.scale
-                        ),
-                        end = Offset(
-                            topLeft.x + baseWidth * camera.scale,
-                            topLeft.y + headerHeight * camera.scale
-                        ),
-                        strokeWidth = 2f * camera.scale
-                    )
-
-                    Log.i("node_data_properties", "${node.data.properties}")
-                    // временная замена свойств и методов
-                    node.data.properties?.signature?.params?.forEachIndexed { index, param ->
-
-                        val modifiersText = param.modifiers
-                            ?.takeIf { it.isNotEmpty() }
-                            ?.joinToString(separator = " ", postfix = " ")
-                            ?: ""
-
-                        val nullableText = if (param.nullable_type) "?" else ""
-
-                        val paramText = buildString {
-                            append(modifiersText)
-                            append(param.label)
-                            append(": ")
-                            append(param.type)
-                            append(nullableText)
-                        }
-
-                        val measured = Paint().apply {
-                            textSize = 28f * camera.scale.coerceAtMost(1.4f)
-                        }.measureText(paramText) / camera.scale
-
-                        updateWidth(measured)
-
-                        drawContext.canvas.nativeCanvas.drawText(
-
-                            paramText,
-                            /*"${param.modifiers?.forEach { modifier -> modifier }}${param.label}: ${param.type}${if (param.nullable_type) "- nullable" else ""}",*/
-
-                            topLeft.x + 20f * camera.scale,
-                            topLeft.y +
-                                    headerHeight * camera.scale +
-                                    (index + 1) * lineHeight * camera.scale,
-                            Paint().apply {
-                                color = textColor.toArgb()
-                                textSize =
-                                    28f * camera.scale.coerceAtMost(1.4f)   // TODO текст должен расширять размер контейнера при переполнении
-                                textAlign = Paint.Align.LEFT
-                                isAntiAlias = true
+            Column(modifier = Modifier.weight(0.3f).background(Color.Cyan)) {
+                // TOP
+                Box(modifier = Modifier.align(Alignment.CenterHorizontally)) {
+                    ColumnContainer("TOP", columns.top) { node ->
+                        GraphNodeView(
+                            node = node,
+                            camera = camera,
+                            isSelected = false,
+                            onClick = {
+                                focusId = node.id
+                                centerCameraOnNode(camera, viewportSize)
                             }
                         )
                     }
                 }
+            }
+
+            Column(modifier = Modifier.weight(0.4f).background(Color.LightGray)) {
+                // CENTER
+                Box(modifier = Modifier.align(Alignment.CenterHorizontally)) {
+                    ColumnContainer("CENTER", listOfNotNull(columns.center)) { node ->
+                        GraphNodeView(
+                            node = node,
+                            camera = camera,
+                            isSelected = true,
+                            onClick = {
+                                focusId = node.id
+                                centerCameraOnNode(camera, viewportSize)
+                            }
+                        )
+                    }
+                }
+
+                // LEFT
+                Box(modifier = Modifier.align(Alignment.Start)) {
+                    ColumnContainer("LEFT", columns.left) { node ->
+                        GraphNodeView(
+                            node = node,
+                            camera = camera,
+                            isSelected = false,
+                            onClick = {
+                                focusId = node.id
+                                centerCameraOnNode(camera, viewportSize)
+                            }
+                        )
+                    }
+                }
+
+                // RIGHT
+                Box(modifier = Modifier.align(Alignment.End)) {
+                    ColumnContainer("RIGHT", columns.right) { node ->
+                        GraphNodeView(
+                            node = node,
+                            camera = camera,
+                            isSelected = false,
+                            onClick = {
+                                focusId = node.id
+                                centerCameraOnNode(camera, viewportSize)
+                            }
+                        )
+                    }
+                }
+            }
+
+            // BOTTOM CONTAINER
+            Column(modifier = Modifier
+                .weight(0.3f)
+                .fillMaxWidth()
+                .background(Color.DarkGray),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+
+                // BOTTOM
+                Column(modifier = Modifier
+                    .background(Color(0xFF86A4B4)),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+
+                    ColumnContainer("BOTTOM", columns.bottom) { node ->
+                        GraphNodeView(
+                            node = node,
+                            camera = camera,
+                            isSelected = false,
+                            onClick = {
+                                focusId = node.id
+                                centerCameraOnNode(camera, viewportSize)
+                            }
+                        )
+                    }
+                }
+            }
         }
     }
 }

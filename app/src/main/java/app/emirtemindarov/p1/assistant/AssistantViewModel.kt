@@ -19,6 +19,7 @@ import app.emirtemindarov.p1.assistant.responsesapi.TextConfig
 import app.emirtemindarov.p1.room.GraphDao
 import app.emirtemindarov.p1.room.GraphEntity
 import app.emirtemindarov.p1.room.GraphLoadMode
+import app.emirtemindarov.p1.utils.LogUtils.logLong
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -131,6 +132,8 @@ class AssistantViewModel(
             val graph: GraphModel =
                 jsonParser.decodeFromString(jsonText)
 
+            //logLong("responseGraph", "$graph")
+
             val graphId = UUID.randomUUID().toString()
             val time = System.currentTimeMillis()
 
@@ -183,6 +186,8 @@ class AssistantViewModel(
 
         val graph =
             jsonParser.decodeFromString<GraphModel>(entity.graphJson)
+
+        logLong("responseGraph", "$graph")
 
         _state.update { it.copy(
             stage = AssistantStage.Success(

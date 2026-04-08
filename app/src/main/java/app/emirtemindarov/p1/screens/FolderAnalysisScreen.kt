@@ -33,13 +33,9 @@ import app.emirtemindarov.p1.assistant.AssistantStage
 import app.emirtemindarov.p1.assistant.AssistantViewModel
 import app.emirtemindarov.p1.components.buttons.CircleButton
 import app.emirtemindarov.p1.components.buttons.GraphButton
-import app.emirtemindarov.p1.render.GraphRenderV2
 import app.emirtemindarov.p1.components.buttons.SimpleButton
 import app.emirtemindarov.p1.render.CameraState
-import app.emirtemindarov.p1.render.GraphRenderV3
-import app.emirtemindarov.p1.render.GraphRenderV3M2
-import app.emirtemindarov.p1.render.GraphRenderV3M3
-import app.emirtemindarov.p1.render.GraphRenderV4
+import app.emirtemindarov.p1.render.GraphRenderV2
 import app.emirtemindarov.p1.room.GraphLoadMode
 import app.emirtemindarov.p1.utils.LogUtils.logLong
 import app.emirtemindarov.p1.utils.toRenderGraph
@@ -132,19 +128,10 @@ fun FolderAnalysisScreen(
 
                     val camera = remember { CameraState() }
 
-                    GraphRenderV4(
-                        renderGraph = graph.toRenderGraph(layoutID),
-                        camera = camera,
-                        mainElementName = graph.nodes.first().label
+                    GraphRenderV2(
+                        graph = graph,
+                        camera = camera
                     )
-
-                    /*GraphRenderV2(
-                        renderGraph = graph.toRenderGraph(layoutID),
-                        scale = scale,
-                        offset = offset,
-                        mainElementName = graph.nodes.first().label,
-                        modifier = Modifier.fillMaxSize()
-                    )*/
 
                     // Слева сверху
                     Column(

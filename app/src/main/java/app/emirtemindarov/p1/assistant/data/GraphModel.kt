@@ -5,7 +5,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class GraphModel(
     val nodes: List<GraphNode>,
-    val edges: List<GraphEdge>
+    val edges: List<GraphEdge>,
 )
 
 // === NODE ===
@@ -14,7 +14,7 @@ data class GraphModel(
 data class GraphNode(
     val id: String,
     val label: String,
-    val type: String,
+    val type: NodeType,
     val subtype: String? = null,
     val color: String? = null,
     val description: String? = null,
@@ -22,7 +22,18 @@ data class GraphNode(
     val properties: NodeProperties? = null
 )
 
-// Поле "properties" (строгое)
+@Serializable
+enum class NodeType {
+    FILE,
+    FOLDER,
+    CLASS,
+    INTERFACE,
+    FUNCTION,
+    VARIABLE,
+    BLOCK,
+    OBJECT,   // вместо else
+}
+
 @Serializable
 data class NodeProperties(
     val path: String? = null,
@@ -30,7 +41,6 @@ data class NodeProperties(
     val signature: Signature,
     val visibility: String? = null,  // public, private, protected...
     val typeName: String? = null,
-    val children_ids: List<String>? = null
 )
 
 @Serializable
@@ -60,9 +70,17 @@ data class Param(
 data class GraphEdge(
     val from: String,
     val to: String,
-    val type: String,
+    val type: EdgeType,
     val properties: EdgeProperties? = null
 )
+
+enum class EdgeType {
+    CONTAINS,
+    USES,
+    CALLS,
+    IMPLEMENTS,
+    INHERITS
+}
 
 @Serializable
 data class EdgeProperties(
