@@ -1,20 +1,16 @@
 package app.emirtemindarov.p1
 
+import android.app.Activity
+import android.graphics.drawable.Drawable
 import android.util.Log
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.State
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.Lifecycle
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -26,26 +22,30 @@ import app.emirtemindarov.p1.assistant.AssistantViewModel
 import app.emirtemindarov.p1.mvvm.originalroot.OriginalRootViewModel
 import app.emirtemindarov.p1.mvvm.savedprojects.SavedProjectsViewModel
 import app.emirtemindarov.p1.mvvm.singleFile.SingleFileViewModel
-import app.emirtemindarov.p1.screens.FileAnalysisScreen
+import app.emirtemindarov.p1.screens.AnalysisScreen
 import app.emirtemindarov.p1.screens.FileDetailsScreen
 import app.emirtemindarov.p1.screens.FileSelectionScreen
-import app.emirtemindarov.p1.screens.FolderAnalysisScreen
 import app.emirtemindarov.p1.screens.FolderDetailsScreen
 import app.emirtemindarov.p1.screens.FolderSelectionScreen
 import app.emirtemindarov.p1.screens.SavedScreen
-
-// TODO блокировать кнопки при переходе между экранами ? (системного решения кажется нет, но возможно есть специальная библиотека)
-//  (чтобы например нельзя было нажать кнопку выбора файла/папки при уходе с fileSelectionScreen)
-//  (проблема - старый экран затухает, но его кнопки ненадолго продолжают быть активными)
-
-// TODO возможно сделать передвижение влево-вправо у экранов
+import android.content.pm.ActivityInfo
+import androidx.activity.compose.LocalActivity
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.padding
 
 @Composable
 fun AppNavigation(
     navController: NavHostController,
     assistantViewModel: AssistantViewModel,
     savedProjectsViewModel: SavedProjectsViewModel,
-    modifier: Modifier,     // хранится отступ под AppScaffold
+    innerPadding: PaddingValues,
+    icons: Map<String, Drawable?>
 ) {
 
     val originalRootViewModel: OriginalRootViewModel = viewModel()
@@ -53,11 +53,12 @@ fun AppNavigation(
     val singleFileViewModel: SingleFileViewModel = viewModel()
 
     val backStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = backStackEntry?.destination?.route
+    Log.i("backStackEntry", "$backStackEntry")
 
     NavHost(
         navController = navController,
         startDestination = Screen.AnalysisRoot,
-        modifier = modifier,        // применяется отступ под AppScaffold (только здесь!)
 
         enterTransition = {
             val from = initialState.destination.route
@@ -77,7 +78,7 @@ fun AppNavigation(
 
                 else -> {
                     Log.i("enter-3", "3")
-                    EnterTransition.None
+                    fadeIn(tween(0))
                 }
             }
         },
@@ -100,7 +101,7 @@ fun AppNavigation(
 
                 else -> {
                     Log.i("exit-3", "3")
-                    ExitTransition.None
+                    fadeOut(tween(0))
                 }
             }
         },
@@ -119,7 +120,7 @@ fun AppNavigation(
                     slideInHorizontally { it }
                 }
 
-                else -> EnterTransition.None
+                else -> fadeIn(tween(0))
             }
         },
 
@@ -137,7 +138,7 @@ fun AppNavigation(
                     slideOutHorizontally { -it }
                 }
 
-                else -> ExitTransition.None
+                else -> fadeOut(tween(0))
             }
         }
     ) {
@@ -147,46 +148,52 @@ fun AppNavigation(
             startDestination = Screen.HomeScreen,
         ) {
             composable<Screen.HomeScreen> {
-                HomeScreen(
-                    navController = navController,
-                )
+                // Portrait
+                Box(Modifier.padding(innerPadding)) {
+                    HomeScreen(
+                        navController = navController,
+                    )
+                }
             }
             composable<Screen.FileSelectionScreen> {
-                FileSelectionScreen(
-                    navController = navController,
-                    singleFileViewModel = singleFileViewModel,
-                )
+                // Portrait
+                Box(Modifier.padding(innerPadding)) {
+                    FileSelectionScreen(
+                        navController = navController,
+                        singleFileViewModel = singleFileViewModel,
+                    )
+                }
             }
             composable<Screen.FolderSelectionScreen> {
-                FolderSelectionScreen(
-                    navController = navController,
-                    originalRootViewModel = originalRootViewModel,
-                )
+                // Portrait
+                Box(Modifier.padding(innerPadding)) {
+                    FolderSelectionScreen(
+                        navController = navController,
+                        originalRootViewModel = originalRootViewModel,
+                    )
+                }
             }
             composable<Screen.FileDetailsScreen> {
                 val args = it.toRoute<Screen.FileDetailsScreen>()
-                FileDetailsScreen(
-                    id = args.id,
-                    originalRootViewModel = originalRootViewModel,
-                    navController = navController,
-                )
+                // Portrait
+                Box(Modifier.padding(innerPadding)) {
+                    FileDetailsScreen(
+                        id = args.id,
+                        originalRootViewModel = originalRootViewModel,
+                        navController = navController,
+                    )
+                }
             }
             composable<Screen.FolderDetailsScreen> {
                 val args = it.toRoute<Screen.FolderDetailsScreen>()
-                FolderDetailsScreen(
-                    id = args.id,
-                    originalRootViewModel = originalRootViewModel,
-                    navController = navController,
-                )
-            }
-            composable<Screen.FileAnalysisScreen> {
-                val args = it.toRoute<Screen.FileAnalysisScreen>()
-                FileAnalysisScreen(
-                    graphId = args.graphId,
-                    fileInfo = args.fileInfo,
-                    assistantViewModel = assistantViewModel,
-                    navController = navController,
-                )
+                // Portrait
+                Box(Modifier.padding(innerPadding)) {
+                    FolderDetailsScreen(
+                        id = args.id,
+                        originalRootViewModel = originalRootViewModel,
+                        navController = navController,
+                    )
+                }
             }
         }
 
@@ -197,39 +204,35 @@ fun AppNavigation(
             startDestination = Screen.SavedScreen,
         ) {
             composable<Screen.SavedScreen> {
-                SavedScreen(
-                    viewModel = savedProjectsViewModel,
-                    navController = navController,
-                    onGraphClick = { graph ->
-                        navController.navigate(
-                            Screen.FileAnalysisScreen(
-                                graphId = graph.graphId,
-                                fileInfo = null // или если есть
+                // Unspecified
+                Box(Modifier.padding(innerPadding)) {
+                    SavedScreen(
+                        savedProjectsViewModel = savedProjectsViewModel,
+                        navController = navController,
+                        onGraphClick = { graph ->
+                            navController.navigate(
+                                Screen.AnalysisScreen(
+                                    graphId = graph.graphId,
+                                    fileHierarchyInfo = null // или если есть
+                                )
                             )
-                        )
-                    }
-                )
+                        }
+                    )
+                }
             }
         }
 
+        // TODO !!!!!!  отсеивать FileInfo.uri (бесполезно для анализа и ест много токенов)  !!!!!
         // можно перейти с любой вкладки
-        composable<Screen.FileAnalysisScreen> {
-            val args = it.toRoute<Screen.FileAnalysisScreen>()
-            FileAnalysisScreen(
+        composable<Screen.AnalysisScreen> {
+            val args = it.toRoute<Screen.AnalysisScreen>()
+            // Unspecified
+            AnalysisScreen(
                 graphId = args.graphId,
-                fileInfo = args.fileInfo,
+                fileInfo = args.fileHierarchyInfo,
                 assistantViewModel = assistantViewModel,
                 navController = navController,
-            )
-        }
-        // можно перейти с любой вкладки
-        composable<Screen.FolderAnalysisScreen> {
-            val args = it.toRoute<Screen.FolderAnalysisScreen>()
-            FolderAnalysisScreen(
-                graphId = args.graphId,
-                fileHierarchyInfo = args.fileHierarchyInfo,
-                assistantViewModel = assistantViewModel,
-                navController = navController,
+                icons = icons
             )
         }
 

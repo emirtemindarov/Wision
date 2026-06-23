@@ -27,7 +27,7 @@ sealed class Screen {
     @Serializable
     data object FolderSelectionScreen : Screen()
 
-    // Только для отображения информации о файле при нажатии из иерархии файлов / без возможности выбора нового файла / основной элемент - кнопка перехода на FileAnalysisScreen / один из элементов - FileInfoDisplay
+    // Только для отображения информации о файле при нажатии из иерархии файлов / без возможности выбора нового файла / основной элемент - кнопка перехода на AnalysisScreen / один из элементов - FileInfoDisplay
     @Serializable
     data class FileDetailsScreen(
         val id: String
@@ -41,14 +41,7 @@ sealed class Screen {
 
     // Разбор элементов и связей в файле / Важный экран / может быть вызван из любой вкладки
     @Serializable
-    data class FileAnalysisScreen(
-        val graphId: String? = null,   // если не null → грузим из БД
-        val fileInfo: String? = null    // если не null → новый анализ
-    ) : Screen()
-
-    // Разбор элементов и связей в папке / Важный экран / может быть вызван из любой вкладки
-    @Serializable
-    data class FolderAnalysisScreen(
+    data class AnalysisScreen(
         val graphId: String? = null,   // если не null → грузим из БД
         val fileHierarchyInfo: String? = null    // если не null → новый анализ
     ) : Screen()

@@ -1,7 +1,5 @@
 package app.emirtemindarov.p1.assistant.responsesapi
 
-import kotlinx.serialization.descriptors.StructureKind
-
 data class ResponseRequest(
     val model: String,
     val input: List<InputItem>,
@@ -12,11 +10,6 @@ data class ResponseRequest(
 data class TextConfig(
     val format: Map<String, Any>
 )
-
-/*data class JsonSchema(
-    val strict: Boolean,
-    val schema: StructureKind.OBJECT
-)*/
 
 data class InputItem(
     val role: String,
@@ -29,7 +22,8 @@ data class InputContent(
 )
 
 data class ResponseResponse(
-    val output: List<ResponseOutput>
+    val output: List<ResponseOutput>,
+    val usage: ResponsesUsage,
 )
 
 data class ResponseOutput(
@@ -41,4 +35,15 @@ data class ResponseOutput(
 data class ResponseContent(
     val type: String,
     val text: String? = null
+)
+
+data class ResponsesUsage(
+    val input_tokens: Long,
+    val output_tokens: Long,
+    val total_tokens: Long,
+    val output_tokens_details: ReasoningTokens,
+)
+
+data class ReasoningTokens(
+    val reasoning_tokens: Long,
 )

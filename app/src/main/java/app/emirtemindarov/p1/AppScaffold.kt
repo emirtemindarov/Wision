@@ -6,26 +6,16 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
-import androidx.compose.foundation.layout.exclude
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FabPosition
 import androidx.compose.material3.FloatingActionButton
@@ -43,7 +33,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -53,6 +42,9 @@ import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.compose.runtime.saveable.rememberSaveable
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,8 +54,91 @@ fun AppScaffold(
 ) {
 
     val backStackEntry by navController.currentBackStackEntryAsState()
-    val currentRoute = backStackEntry?.destination?.route
     val destination = backStackEntry?.destination
+    val currentRoute = backStackEntry?.destination?.route
+
+    var scaffoldRoute by rememberSaveable { mutableStateOf(currentRoute) }
+
+    var fabRoute by rememberSaveable { mutableStateOf(currentRoute) }
+
+    val isCurrentAnalysis =
+        currentRoute?.startsWith(Screen.AnalysisScreen::class.qualifiedName!!) == true
+
+    val isScaffoldAnalysis =
+        scaffoldRoute?.startsWith(Screen.AnalysisScreen::class.qualifiedName!!) == true
+
+    val regularScaffoldScreens = setOf(
+        Screen.FileSelectionScreen::class.qualifiedName!!,
+        Screen.FileDetailsScreen::class.qualifiedName!!,
+        Screen.FolderSelectionScreen::class.qualifiedName!!,
+        Screen.FolderDetailsScreen::class.qualifiedName!!,
+    )
+
+    val analysisScaffoldScreens = setOf(
+        Screen.AnalysisScreen::class.qualifiedName!!,
+    )
+
+    DisposableEffect(backStackEntry) {
+        val entry = backStackEntry ?: return@DisposableEffect onDispose {}
+
+        val observer = LifecycleEventObserver { _, event ->
+            val targetRoute = entry.destination.route
+
+            val isTargetHome =
+                targetRoute == Screen.HomeScreen::class.qualifiedName!!
+
+            val isFabHome =
+                fabRoute == Screen.HomeScreen::class.qualifiedName!!
+
+            val isTargetRegular =
+                regularScaffoldScreens.any { targetRoute?.startsWith(it) == true }
+
+            val isTargetAnalysis =
+                targetRoute?.startsWith(Screen.AnalysisScreen::class.qualifiedName!!) == true
+
+            val isTargetSaved =
+                targetRoute?.startsWith(Screen.SavedScreen::class.qualifiedName!!) == true
+
+            val isScaffoldRegular =
+                regularScaffoldScreens.any { scaffoldRoute?.startsWith(it) == true }
+
+            val isScaffoldSaved =
+                scaffoldRoute?.startsWith(Screen.SavedScreen::class.qualifiedName!!) == true
+
+            // раннее обновление
+            if (
+            // выход из analysis
+                (isScaffoldAnalysis && !isTargetAnalysis) ||
+
+                // regular → saved
+                (isScaffoldRegular && isTargetSaved) ||
+
+                // saved → regular
+                (isScaffoldSaved && isTargetRegular)
+            ) {
+                scaffoldRoute = targetRoute
+            }
+            else if (event == Lifecycle.Event.ON_RESUME) {
+                scaffoldRoute = targetRoute
+            }
+
+            // FAB логика
+            if (isFabHome && !isTargetHome) {
+                // уходим с Home → скрыть сразу
+                fabRoute = targetRoute
+            }
+            else if (event == Lifecycle.Event.ON_RESUME && isTargetHome) {
+                // приходим на Home → показать только после RESUME
+                fabRoute = targetRoute
+            }
+        }
+
+        entry.lifecycle.addObserver(observer)
+
+        onDispose {
+            entry.lifecycle.removeObserver(observer)
+        }
+    }
 
     val isSavedTabSelected =
         destination?.hierarchy?.any {
@@ -75,33 +150,16 @@ fun AppScaffold(
             it.route == Screen.AnalysisRoot::class.qualifiedName
         } == true
 
-    val regularScaffoldScreens = setOf(
-        Screen.FileSelectionScreen::class.qualifiedName!!,
-        Screen.FileDetailsScreen::class.qualifiedName!!,
-        Screen.FolderSelectionScreen::class.qualifiedName!!,
-        Screen.FolderDetailsScreen::class.qualifiedName!!,
-    )
-
-    val analysisScaffoldScreens = setOf(
-        Screen.FileAnalysisScreen::class.qualifiedName!!,
-        Screen.FolderAnalysisScreen::class.qualifiedName!!
-    )
-
     val homeScreenTopAppBar: @Composable () -> Unit = {
         TopAppBar(
             // без отступа сверху под системную панель, только на HomeScreen
-            windowInsets = WindowInsets(top = 0),
+            //windowInsets = WindowInsets(top = 0),
 
             colors = TopAppBarDefaults.topAppBarColors(
                 containerColor = MaterialTheme.colorScheme.surface,
                 //titleContentColor = MaterialTheme.colorScheme.onSurface,
             ),
-            title = {
-                /*Text(
-                    text = "Начальный экран",
-                    style = MaterialTheme.typography.titleLarge
-                )*/
-            },
+            title = {},
             navigationIcon = {
                 IconButton(onClick = {}/*TODO onMenuClick*/) {
                     Icon(
@@ -126,7 +184,10 @@ fun AppScaffold(
     val homeScreenFloatingActionButton: @Composable () -> Unit = {
         FloatingActionButton(
             modifier = Modifier
-                .offset(x = (-12).dp, y = (-20).dp)
+                .offset(
+                    x = (-12).dp,
+                    y = (64).dp
+                )
                 .wrapContentSize(),
             onClick = {
                 navController.navigateTab(Screen.SavedRoot)
@@ -140,103 +201,39 @@ fun AppScaffold(
         }
     }
 
-    val homeScreenBottomBar: @Composable () -> Unit = {}    // отсутствует
+    val homeScreenBottomBar: @Composable () -> Unit = {}    // отсутствует НЕ ИСПОЛЬЗОВАТЬ ПУСТЫМ
 
     val regularTopAppBar: @Composable () -> Unit = {
 
         CenterAlignedTopAppBar(
+            modifier = Modifier/*.width(64.dp)*/,
             colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = Color.Transparent,
-                //containerColor = MaterialTheme.colorScheme.onPrimary,
+                //containerColor = Color.Transparent,
+                containerColor = MaterialTheme.colorScheme.onPrimary,
                 titleContentColor = MaterialTheme.colorScheme.primary,
                 //actionIconContentColor = MaterialTheme.colorScheme.onPrimary
             ),
-            title = {
-                /*Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleLarge
-                )*/
-            },
+            title = {},
             navigationIcon = {
                 IconButton(onClick = { navController.popBackStack() }) {
                     Icon(
-                        painter = painterResource(id = R.drawable.arrow_left_alt_24px),
+                        painter = painterResource(id = R.drawable.keyboard_arrow_left_24px),
                         contentDescription = "Назад",
-                        tint = MaterialTheme.colorScheme.primary
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(28.dp)
                     )
                 }
-            },
-            actions = {
-                var menuExpanded by remember { mutableStateOf(false) } // состояние для контекстного меню справа сверху
-
-                IconButton(onClick = { menuExpanded = true }) {
-                    Icon(
-                        imageVector = Icons.Default.MoreVert,
-                        contentDescription = "Меню",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-
-
-                DropdownMenu(
-                    expanded = menuExpanded,
-                    onDismissRequest = { menuExpanded = false }
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("Настройки") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Settings,
-                                contentDescription = null
-                            )
-                        },
-                        onClick = {
-                            menuExpanded = false
-                            // TODO: переход в настройки
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("О приложении") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Info,
-                                contentDescription = null
-                            )
-                        },
-                        onClick = {
-                            menuExpanded = false
-                            // TODO: открыть экран About
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Выход") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ExitToApp,
-                                contentDescription = null
-                            )
-                        },
-                        onClick = {
-                            menuExpanded = false
-                            // TODO: выйти из приложения или выйти из аккаунта
-                        }
-                    )
-                }
-
             }
         )
     }
 
-    val regularFloatingActionButton: @Composable () -> Unit = {}    // отсутствует
+    val regularFloatingActionButton: @Composable () -> Unit = {}    // отсутствует НЕ ИСПОЛЬЗОВАТЬ ПУСТЫМ
 
     val regularBottomBar: @Composable () -> Unit = {
         NavigationBar(
             containerColor = MaterialTheme.colorScheme.onPrimary,
             contentColor = MaterialTheme.colorScheme.primary
         ) {
-            // FIXME при быстром многократном переходе не успевает обновиться текст заголовка
-            //  (видно по шрифту что свойства меняются а текст в итоге не соответствует вкладке)
-            //  (возвращается к нормальному состоянию при медленном переключении)
             NavigationBarItem(
                 selected = isAnalysisTabSelected,
                 onClick = {
@@ -301,18 +298,7 @@ fun AppScaffold(
                     overflow = TextOverflow.Ellipsis
                 )
             },
-            /*navigationIcon = {
-                IconButton(onClick = { navController.popBackStack() }) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.arrow_left_alt_24px),
-                        contentDescription = "Назад",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-            },*/
             actions = {
-                var menuExpanded by remember { mutableStateOf(false) } // состояние для контекстного меню справа сверху
-
                 // TODO реализовать поисковую систему (окно поиска будет отдельным экраном с динамическими подсказками?)
                 Icon(
                     imageVector = Icons.Default.Search,
@@ -325,7 +311,7 @@ fun AppScaffold(
 
                 // TODO поэкспериментировать с альтернативными представлениями списка проанализированных проектов
                 // TODO проверять дату и поправлять на недавнее (1 минуту назад, 2 минуты назад) вместо formatDate
-                // TODO сделвть скролл и временные разделы по дням
+                // TODO сделвть временные разделы по дням
                 Icon(
                     painter = painterResource(id = R.drawable.view_comfy_alt_24px),
                     contentDescription = "Меню",
@@ -335,56 +321,11 @@ fun AppScaffold(
 
                 Spacer(modifier = Modifier.width(16.dp))
 
-                /*DropdownMenu(
-                    expanded = menuExpanded,
-                    onDismissRequest = { menuExpanded = false }
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("Настройки") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Settings,
-                                contentDescription = null
-                            )
-                        },
-                        onClick = {
-                            menuExpanded = false
-                            // TODO: переход в настройки
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("О приложении") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Info,
-                                contentDescription = null
-                            )
-                        },
-                        onClick = {
-                            menuExpanded = false
-                            // TODO: открыть экран About
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Выход") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ExitToApp,
-                                contentDescription = null
-                            )
-                        },
-                        onClick = {
-                            menuExpanded = false
-                            // TODO: выйти из приложения или выйти из аккаунта
-                        }
-                    )
-                }*/
-
             }
         )
     }
 
-    val savedProjectsFloatingActionButton: @Composable () -> Unit = {}    // отсутствует
+    val savedProjectsFloatingActionButton: @Composable () -> Unit = {}    // отсутствует НЕ ИСПОЛЬЗОВАТЬ ПУСТЫМ
 
     val savedProjectsBottomBar: @Composable () -> Unit = {
         NavigationBar(
@@ -440,16 +381,16 @@ fun AppScaffold(
 
     Log.i("selectedTabCheckSuccess", (currentRoute?.startsWith(Screen.SavedRoot::class.qualifiedName!!) == true).toString())
 
-    val analysisTopAppBar: @Composable () -> Unit = {}    // отсутствует
+    val analysisTopAppBar: @Composable () -> Unit = {}    // отсутствует НЕ ИСПОЛЬЗОВАТЬ ПУСТЫМ
 
-    val analysisFloatingActionButton: @Composable () -> Unit = {}    // отсутствует
+    val analysisFloatingActionButton: @Composable () -> Unit = {}    // отсутствует НЕ ИСПОЛЬЗОВАТЬ ПУСТЫМ
 
-    val analysisBottomBar: @Composable () -> Unit = {}    // отсутствует
+    val analysisBottomBar: @Composable () -> Unit = {}    // отсутствует НЕ ИСПОЛЬЗОВАТЬ ПУСТЫМ
 
 
-    var topAppBarPlaceholder: @Composable (() -> Unit)
-    var floatingActionButtonPlaceholder: @Composable (() -> Unit)
-    var bottomBarPlaceholder: @Composable (() -> Unit)
+    var topAppBarPlaceholder: @Composable (() -> Unit)         // НЕ ИСПОЛЬЗОВАТЬ
+    var floatingActionButtonPlaceholder: @Composable (() -> Unit)      // НЕ ИСПОЛЬЗОВАТЬ
+    var bottomBarPlaceholder: @Composable (() -> Unit)        // НЕ ИСПОЛЬЗОВАТЬ
 
     Log.i("currentRoute", currentRoute.toString())
 
@@ -465,33 +406,52 @@ fun AppScaffold(
     Scaffold(
         topBar = {
             when {
-                currentRoute == Screen.HomeScreen::class.qualifiedName!! -> {
+                scaffoldRoute == Screen.HomeScreen::class.qualifiedName!! -> {
                     homeScreenTopAppBar()
                 }
 
                 regularScaffoldScreens.any { baseRoute ->
-                    currentRoute?.startsWith(baseRoute) == true
+                    scaffoldRoute?.startsWith(baseRoute) == true
                 } -> {
                     regularTopAppBar()
                 }
 
-                analysisScaffoldScreens.any { baseRoute ->
-                    currentRoute?.startsWith(baseRoute) == true
-                } -> {
-                    analysisTopAppBar()
-                }
+                /*currentRoute == Screen.AnalysisScreen::class.qualifiedName!! -> {
+                    TopAppBar(
+                        title = {},
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = Color.Transparent,
+                            navigationIconContentColor = Color.Transparent,
+                            titleContentColor = Color.Transparent,
+                            actionIconContentColor = Color.Transparent
+                        )
+                    )
+                }*/
 
-                currentRoute?.startsWith(
+                scaffoldRoute?.startsWith(
                     Screen.SavedScreen::class.qualifiedName!!
                 ) == true -> {
                     savedProjectsTopAppBar()
                 }
+
+                /*else -> {
+                    // для непредусмотренных ситуаций
+                    TopAppBar(
+                        title = {},
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = Color.Transparent,
+                            navigationIconContentColor = Color.Transparent,
+                            titleContentColor = Color.Transparent,
+                            actionIconContentColor = Color.Transparent
+                        )
+                    )
+                }*/
             }
         },
 
         floatingActionButton = {
             when {
-                currentRoute == Screen.HomeScreen::class.qualifiedName!! -> {
+                fabRoute == Screen.HomeScreen::class.qualifiedName!! -> {
                     homeScreenFloatingActionButton()
                 }
             }
@@ -499,33 +459,56 @@ fun AppScaffold(
 
         bottomBar = {
             when {
+                scaffoldRoute?.startsWith(Screen.HomeScreen::class.qualifiedName!!) == true -> {
+                    // отсутствует
+                    NavigationBar(
+                        containerColor = Color.Transparent,
+                        contentColor = Color.Transparent
+                    ) { }
+                }
+
+               /* currentRoute?.startsWith(Screen.AnalysisScreen::class.qualifiedName!!) == true -> {
+                    // отсутствует
+                    NavigationBar(
+                        containerColor = Color.Transparent,
+                        contentColor = Color.Transparent
+                    ) { }
+                }*/
+
                 regularScaffoldScreens.any { baseRoute ->
-                    currentRoute?.startsWith(baseRoute) == true
+                    scaffoldRoute?.startsWith(baseRoute) == true
                 } -> {
                     regularBottomBar()
                 }
 
-                currentRoute?.startsWith(
-                    Screen.SavedScreen::class.qualifiedName!!
-                ) == true -> {
+                scaffoldRoute?.startsWith(Screen.SavedScreen::class.qualifiedName!!) == true -> {
                     savedProjectsBottomBar()
                 }
+
+                /*else -> {
+                    // для непредусмотренных ситуаций
+                    NavigationBar(
+                        containerColor = Color.Transparent,
+                        contentColor = Color.Transparent
+                    ) {}
+                }*/
             }
         },
 
         floatingActionButtonPosition = FabPosition.End
     ) { innerPadding ->
         val appliedPadding = if (
-            (regularScaffoldScreens + analysisScaffoldScreens).any { baseRoute ->
-                currentRoute?.startsWith(baseRoute) == true
+            (regularScaffoldScreens/* + analysisScaffoldScreens*/).any { baseRoute ->
+                scaffoldRoute?.startsWith(baseRoute) == true
             }
         ) {
-            PaddingValues(
+            innerPadding
+            /*PaddingValues(    // TODO не использовать
                 start = innerPadding.calculateStartPadding(LayoutDirection.Ltr),
                 top = 0.dp,
                 end = innerPadding.calculateEndPadding(LayoutDirection.Ltr),
                 bottom = innerPadding.calculateBottomPadding()
-            )
+            )*/
         } else {
             innerPadding
         }

@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,29 +16,34 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.State
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import app.emirtemindarov.p1.Environment
 import app.emirtemindarov.p1.R
 import app.emirtemindarov.p1.Screen
-import app.emirtemindarov.p1.components.buttons.GraphButton
-import app.emirtemindarov.p1.components.buttons.SimpleButton
+import app.emirtemindarov.p1.components.buttons.OpenDialogButton
+import app.emirtemindarov.p1.components.dividers.HorizontalDivider
 import app.emirtemindarov.p1.mvvm.data.FileHierarchy
 import app.emirtemindarov.p1.mvvm.data.FileInfo
 import app.emirtemindarov.p1.mvvm.interfaces.FileStructureInterface
-import app.emirtemindarov.p1.room.GraphLoadMode
+import app.emirtemindarov.p1.ui.theme.CustomTextStyles
 import app.emirtemindarov.p1.utils.FileUtils.formatDate
-import kotlinx.serialization.json.Json
 
 // Может работать и с папкой, и с файлом
 @Composable
@@ -52,9 +58,10 @@ fun FileInfoDisplay(
 
     Column(modifier = Modifier
         .fillMaxWidth()
-        .padding(16.dp)) {
+        /*.padding(16.dp)*/) {
 
         Log.i("1fileInfo", "$fileInfo")
+
         if (Environment.DEBUG) {
             Text("FileInfoDisplay")
             Spacer(modifier = Modifier.height(8.dp))
@@ -62,8 +69,6 @@ fun FileInfoDisplay(
 
         if (fileInfo.isDirectory) {
             // Если папка
-            Text(text = "Папка: ${fileInfo.name}", style = MaterialTheme.typography.titleMedium)
-            Text(text = "Путь: ${shortText(fileInfo.uri)}", style = MaterialTheme.typography.bodyMedium)
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -72,12 +77,14 @@ fun FileInfoDisplay(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
 
-                SimpleButton(
-                    enabled = true,     // блокировка кнопок при переключении экрана
-                    action = {
-                        //fileStructure.setCurrentlyViewedFile(fileInfo)
+                // TODO !!! Кнопка "Открыть анализ" если текущий документ еще не поменялся
 
-                        // Создаю FileHierarchy напрямую, так как не работаю с DocumentFile API
+                OpenDialogButton(
+                    enabled = true,
+                    dialogTitle = "Подтвердите действие",
+                    dialogText = "Вы действительно хотите запустить анализ папки?",
+                    onConfirm = {
+
                         val fileHierarchy = children?.let {
                             FileHierarchy(
                                 fileInfo = fileInfo,
@@ -85,165 +92,250 @@ fun FileInfoDisplay(
                             )
                         }
 
-                        //val json = Json.encodeToString(fileHierarchy) // сериализуем FileInfo в строку JSON
-
                         navController.navigate(
-                            Screen.FolderAnalysisScreen(
+                            Screen.AnalysisScreen(
+                                // FIXME отправлять json !!!!!!!!!!!!!!!!!!!!!!
                                 fileHierarchyInfo = fileHierarchy.toString()
                             )
                         )
-                        // TODO если открываем готовый анализ (не здесь!)
-                        /*navController.navigate(
-                            Screen.FolderAnalysisScreen(
-                                graphId = savedGraphId
-                            )
-                        )*/
                     }
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             painter = painterResource(id = R.drawable.flowchart_24px),
                             contentDescription = "Провести анализ",
-                            tint = MaterialTheme.colorScheme.surface
+                            tint = MaterialTheme.colorScheme.primary
                         )
-
                         Spacer(modifier = Modifier.width(16.dp))
-
                         Text("Провести анализ")
                     }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "Содержимое папки:",
+                    style = MaterialTheme.typography.titleMedium
+                )
+
+                //HorizontalDivider(thickness = (0.3).dp)
             }
 
             Log.i("children", "$children")
 
 
 
-            // цикличный вывод дочерних элементов через LazyColumn с красивым оформлением
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+
+            val sortedChildren = remember(children) {
+                val dirs = children.orEmpty()
+                    .filter { it.fileInfo.isDirectory }
+                    .sortedBy { it.fileInfo.name.lowercase() }
+
+                val files = children.orEmpty()
+                    .filter { !it.fileInfo.isDirectory }
+                    .sortedBy { it.fileInfo.name.lowercase() }
+
+                dirs + files
+            }
+
+            //Spacer(modifier = Modifier.height(8.dp))
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp)
             ) {
-                items(children ?: emptyList()) { child ->
 
-                    val backgroundColor = if (child.fileInfo.isDirectory)
-                        Color(0x0CFFD2AA)
-                        else Color(0x0D73AAEF)
 
-                    Surface(
-                        color = backgroundColor,
-                        tonalElevation = 0.dp,
-                        shadowElevation = 0.dp,
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(8.dp, 0.dp, 8.dp, 8.dp)
-                            .border(1.dp,
-                                MaterialTheme.colorScheme.primary,
-                                RoundedCornerShape(10.dp)
-                            )
-                            .pointerInput(Unit) {
-                                detectTapGestures(
-                                    //onPress = { /* Called when the gesture starts */ },
-                                    onTap = {
-                                        // Called on Single Tap
+                val listState = rememberLazyListState()
 
-                                        if (child.fileInfo.isDirectory) {
-                                            Log.i("child is directory", "$child")
+                LazyColumnFadeContainer(
+                    listState = listState,
+                    modifier = Modifier.fillMaxSize()
+                ) {
 
+                    // цикличный вывод дочерних элементов через LazyColumn с красивым оформлением
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(
+                            sortedChildren,
+                            key = { it.fileInfo.uri }
+                        ) { child ->
+
+                            val isDirectory = child.fileInfo.isDirectory
+
+                            val backgroundColor = if (isDirectory)
+                                Color(0x1AFFD2AA)
+                            else Color(0x0D73AAEF)
+
+                            Surface(
+                                color = backgroundColor,
+                                tonalElevation = 0.dp,
+                                shadowElevation = 0.dp,
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(8.dp, 0.dp, 8.dp, 8.dp)
+                                    .border(
+                                        1.dp,
+                                        MaterialTheme.colorScheme.primary,
+                                        RoundedCornerShape(10.dp)
+                                    )
+                                    .pointerInput(Unit) {
+                                        detectTapGestures(
+                                            //onPress = { /* Called when the gesture starts */ },
+                                            onTap = {
+                                                // Called on Single Tap
+
+                                                if (isDirectory) {
+                                                    Log.i("child is directory", "$child")
+
+                                                    navController.navigate(
+                                                        Screen.FolderDetailsScreen(
+                                                            id = child.fileInfo.uri
+                                                        )
+                                                    )
+                                                } else {
+                                                    // Для файлов
+                                                    Log.i("child is singleFile", "$child")
+
+                                                    navController.navigate(
+                                                        Screen.FileDetailsScreen(
+                                                            id = child.fileInfo.uri
+                                                        )
+                                                    )
+                                                }
+
+                                            },
+
+                                            //onDoubleTap = { /* Called on Double Tap */ },
+
+                                            /*onLongPress = { offset ->
+                                        // Called on Hold
+
+                                        // isNavigating.value = true
+
+                                        // TODO контекстное меню
+
+                                        if (fileHierarchy.fileInfo.isDirectory) {
+                                            // Для папок
                                             navController.navigate(
                                                 Screen.FolderDetailsScreen(
-                                                    id = child.fileInfo.uri
+                                                    id = fileHierarchy.fileInfo.uri
                                                 )
                                             )
-
-                                            /*if (fileHierarchy.children.isNotEmpty()) {
-                                            Log.i(
-                                                "first children",
-                                                fileHierarchy.children.first().fileInfo.uri
-                                            )
-                                        }*/
-
                                         } else {
                                             // Для файлов
-                                            Log.i("child is singleFile", "$child")
-
                                             navController.navigate(
                                                 Screen.FileDetailsScreen(
-                                                    id = child.fileInfo.uri
+                                                    id = fileHierarchy.fileInfo.uri
                                                 )
                                             )
                                         }
 
-                                    },
-
-                                    //onDoubleTap = { /* Called on Double Tap */ },
-
-                                    /*onLongPress = { offset ->
-                                    // Called on Hold
-
-                                    // isNavigating.value = true
-
-                                    // TODO контекстное меню
-
-                                    if (fileHierarchy.fileInfo.isDirectory) {
-                                        // Для папок
-                                        navController.navigate(
-                                            Screen.FolderDetailsScreen(
-                                                id = fileHierarchy.fileInfo.uri
-                                            )
-                                        )
-                                    } else {
-                                        // Для файлов
-                                        navController.navigate(
-                                            Screen.FileDetailsScreen(
-                                                id = fileHierarchy.fileInfo.uri
-                                            )
+                                    },*/
                                         )
                                     }
 
-                                },*/
-                                )
-                            }
-
-                    ) {
-                        Column {
-                            Column(modifier = Modifier.padding(start = 12.dp, top = 12.dp, end = 12.dp)) {
-                                Text(
-                                    text = child.fileInfo.name,
-                                    style = MaterialTheme.typography.titleMedium
-                                )
-                            }
-                            Column(modifier = Modifier.padding(start = 12.dp, end = 12.dp)) {
-                                Text(
-                                    text = "Путь: ${shortText(child.fileInfo.uri)}",
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                                if (!child.fileInfo.isDirectory) {
-                                    Text(
-                                        text = "Размер: ${child.fileInfo.size} байт",
-                                        style = MaterialTheme.typography.bodySmall
-                                    )
-                                }
-                            }
-                            Row(
-                                horizontalArrangement = Arrangement.End,
-                                modifier = Modifier.padding(start = 12.dp, bottom = 12.dp, end = 12.dp).fillMaxWidth()
                             ) {
                                 Column {
-                                    if (child.fileInfo.isDirectory) {
-                                        Icon(
-                                            painter = painterResource(id = R.drawable.folder_24px),
-                                            contentDescription = "Папка",
-                                            tint = MaterialTheme.colorScheme.onSurface
+                                    Column(modifier = Modifier.padding(12.dp)) {
+                                        Text(
+                                            text = child.fileInfo.name,
+                                            style = MaterialTheme.typography.titleMedium,
+                                            maxLines = 2,
+                                            lineHeight = 16.sp,
+                                            overflow = TextOverflow.Ellipsis
                                         )
-                                    } else {
-                                        Icon(
-                                            painter = painterResource(id = R.drawable.docs_24px),
-                                            contentDescription = "Файл",
-                                            tint = MaterialTheme.colorScheme.onSurface
-                                        )
+                                    }
+                                    Column(modifier = Modifier.padding(start = 12.dp, end = 12.dp)) {
+                                        Row {
+                                            Text(
+                                                text = "Дата изменения: ",
+                                                fontFamily = CustomTextStyles.Standard,
+                                                fontWeight = FontWeight.Light,
+                                                fontSize = 12.sp,
+                                                lineHeight = 4.sp,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                            Text(
+                                                text = formatDate(child.fileInfo.lastModified),
+                                                fontFamily = CustomTextStyles.Standard,
+                                                fontWeight = FontWeight.Medium,
+                                                fontSize = 12.sp,
+                                                lineHeight = 4.sp,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+                                        if (isDirectory) {
+                                            Row {
+                                                Text(
+                                                    text = "Количество элементов: ",
+                                                    fontFamily = CustomTextStyles.Standard,
+                                                    fontWeight = FontWeight.Light,
+                                                    fontSize = 12.sp,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis
+                                                )
+                                                Text(
+                                                    text = "${child.children.count()}",
+                                                    fontFamily = CustomTextStyles.Standard,
+                                                    fontWeight = FontWeight.Medium,
+                                                    fontSize = 12.sp,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis
+                                                )
+                                            }
+                                        } else {
+                                            Row {
+                                                Text(
+                                                    text = "Размер: ",
+                                                    fontFamily = CustomTextStyles.Standard,
+                                                    fontWeight = FontWeight.Light,
+                                                    fontSize = 12.sp,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis
+                                                )
+                                                Text(
+                                                    text = "${child.fileInfo.size} байт",
+                                                    fontFamily = CustomTextStyles.Standard,
+                                                    fontWeight = FontWeight.Medium,
+                                                    fontSize = 12.sp,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis
+                                                )
+                                            }
+                                        }
+                                    }
+                                    Row(
+                                        horizontalArrangement = Arrangement.End,
+                                        modifier = Modifier
+                                            .padding(
+                                                start = 12.dp,
+                                                bottom = 12.dp,
+                                                end = 12.dp
+                                            ).fillMaxWidth()
+                                    ) {
+                                        Column {
+                                            if (isDirectory) {
+                                                Icon(
+                                                    painter = painterResource(id = R.drawable.folder_24px),
+                                                    contentDescription = "Папка",
+                                                    tint = MaterialTheme.colorScheme.onSurface
+                                                )
+                                            } else {
+                                                Icon(
+                                                    painter = painterResource(id = R.drawable.docs_24px),
+                                                    contentDescription = "Файл",
+                                                    tint = MaterialTheme.colorScheme.onSurface
+                                                )
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -256,46 +348,35 @@ fun FileInfoDisplay(
 
         } else {
             // Если файл
-            Text(text = "Размер: ${fileInfo.size} байт", style = MaterialTheme.typography.bodyMedium)
-            Text(text = "MIME тип: ${fileInfo.mimeType}", style = MaterialTheme.typography.bodyMedium)
-            Text(text = "Последнее изменение: ${formatDate(fileInfo.lastModified)}", style = MaterialTheme.typography.bodyMedium)
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             Column(modifier = Modifier
                 .fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
 
-                SimpleButton(
+                OpenDialogButton(
                     enabled = true,
-                    action = {
-                        //fileStructure.setCurrentlyViewedFile(fileInfo)
-
-                        //val json = Json.encodeToString(fileInfo) // сериализуем FileInfo в строку JSON
-
+                    dialogTitle = "Подтвердите действие",
+                    dialogText = "Вы действительно хотите запустить анализ файла?",
+                    onConfirm = {
                         // если запускаем новый анализ (перевод в FileHierarchy для системности).
                         //  создаю FileHierarchy напрямую, так как не работаю с DocumentFile API
                         navController.navigate(
-                            Screen.FileAnalysisScreen(
-                                fileInfo = FileHierarchy(
+                            Screen.AnalysisScreen(
+                                fileHierarchyInfo = FileHierarchy(
                                     fileInfo = fileInfo
                                 ).toString()
                             )
                         )
-                        // TODO если открываем готовый анализ (не здесь!)
-                        /*navController.navigate(
-                            Screen.FileAnalysisScreen(
-                                graphId = savedGraphId
-                            )
-                        )*/
                     }
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             painter = painterResource(id = R.drawable.flowchart_24px),
                             contentDescription = "Провести анализ",
-                            tint = MaterialTheme.colorScheme.surface
+                            tint = MaterialTheme.colorScheme.primary
                         )
 
                         Spacer(modifier = Modifier.width(16.dp))
@@ -307,17 +388,18 @@ fun FileInfoDisplay(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = "Файл: ${fileInfo.name}",
+                    text = "Содержимое файла:",
                     style = MaterialTheme.typography.titleMedium
                 )
             }
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
-                item {
-                    Text(text = "${fileInfo.fileContent}", style = MaterialTheme.typography.bodyMedium)
-                }
+            // Можно вызвать отдельно (нужен fileInfo)
+            LazyColumnWithItem(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                CodeTextWithLineNumbers(text = fileInfo.fileContent ?: "")
             }
         }
     }

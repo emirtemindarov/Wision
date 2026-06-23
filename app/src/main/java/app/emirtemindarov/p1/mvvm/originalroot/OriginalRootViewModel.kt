@@ -33,13 +33,31 @@ class OriginalRootViewModel : ViewModel(), FileStructureInterface {
         _foldedMap[uri] = !current
     }
 
+    fun collapseAll(root: FileHierarchy) {
+        val allFolders = mutableListOf<Uri>()
+        collectFolders(root, allFolders)
+
+        allFolders.forEach { uri ->
+            _foldedMap[uri] = true
+        }
+    }
+
+    fun expandAll(root: FileHierarchy) {
+        val allFolders = mutableListOf<Uri>()
+        collectFolders(root, allFolders)
+
+        allFolders.forEach { uri ->
+            _foldedMap[uri] = false
+        }
+    }
+
     fun isFolderFolded(uri: Uri): Boolean {
         return _foldedMap[uri] ?: false
     }
 
 
     // TODO заменить DocumentFile на android.provider.DocumentsContract
-    fun loadAndSetOriginalRoot(context: Context, folder: DocumentFile) {
+    fun loadAndSetOriginalRoot(context: Context, folder: DocumentFile, backStackEntryId: String?) {
         viewModelScope.launch {
             clear()
             val originalHierarchy = buildFileHierarchy(
@@ -48,6 +66,7 @@ class OriginalRootViewModel : ViewModel(), FileStructureInterface {
                 originalUri = folder.uri
             )
             setOriginalRoot(originalHierarchy)
+            setOriginalRootBackStackEntryId(backStackEntryId)
         }
     }
 
@@ -65,6 +84,12 @@ class OriginalRootViewModel : ViewModel(), FileStructureInterface {
         ) }
     }
 
+    fun setOriginalRootBackStackEntryId(backStackEntryId: String?) {
+        _state.update { it.copy(
+            originalRootBackStackEntryId = backStackEntryId
+        ) }
+    }
+
     // Вызывается при гарантированном существовании папки
     fun getOriginalRootUri(): Uri? {
         return _state.value.originalRoot?.fileInfo?.uri?.toUri()
@@ -79,6 +104,11 @@ class OriginalRootViewModel : ViewModel(), FileStructureInterface {
         return _state.value.currentlyViewedFile
     }
 
+    fun getOriginalRootBackStackEntryId(): String? {
+        Log.i("state.value.originalRootBackStackEntryId", "${state.value.originalRootBackStackEntryId}")
+        return state.value.originalRootBackStackEntryId
+    }
+
     fun clear() {
         _state.update { it.copy(
             originalRoot = null
@@ -89,5 +119,18 @@ class OriginalRootViewModel : ViewModel(), FileStructureInterface {
         Log.i("OriginalRoot", "${state.value.originalRoot}")
         Log.i("CurrentlyViewedFile", "${state.value.currentlyViewedFile}")
 
+    }
+}
+
+private fun collectFolders(
+    node: FileHierarchy,
+    result: MutableList<Uri>
+) {
+    if (node.fileInfo.isDirectory) {
+        result.add(node.fileInfo.uri.toUri())
+
+        node.children.forEach {
+            collectFolders(it, result)
+        }
     }
 }

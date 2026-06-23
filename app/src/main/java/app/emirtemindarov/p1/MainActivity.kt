@@ -1,5 +1,6 @@
 package app.emirtemindarov.p1
 
+import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -30,13 +31,19 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        WindowCompat.setDecorFitsSystemWindows(window, false)
+        /*WindowCompat.setDecorFitsSystemWindows(window, false)
         val controller = WindowCompat.getInsetsController(window, window.decorView)
         controller.systemBarsBehavior =
             WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        controller.hide(WindowInsetsCompat.Type.systemBars())
+        controller.hide(WindowInsetsCompat.Type.systemBars())*/
 
         setContent {
+
+            val icons: Map<String, Drawable?> = mapOf(
+                "collapse" to this.getDrawable(R.drawable.unfold_less_24px),
+                "expand" to this.getDrawable(R.drawable.expand_content_24px),
+                "details" to this.getDrawable(R.drawable.search_24px),
+            )
 
             val db = AppDatabase.get(applicationContext)
             val graphDao = db.graphDao()
@@ -44,10 +51,12 @@ class MainActivity : ComponentActivity() {
             val savedProjectsViewModel = remember {
                 SavedProjectsViewModel(graphDao)
             }
+            savedProjectsViewModel.debug()
 
             val assistantViewModel: AssistantViewModel = viewModel(
                 factory = AssistantViewModelFactory(graphDao)
             )
+            assistantViewModel.debug()
 
             val navController = rememberNavController()
 
@@ -63,7 +72,8 @@ class MainActivity : ComponentActivity() {
                             navController = navController,
                             assistantViewModel = assistantViewModel,
                             savedProjectsViewModel = savedProjectsViewModel,
-                            modifier = Modifier.padding(innerPadding),
+                            innerPadding = innerPadding,
+                            icons = icons
                         )
                     }
                 }

@@ -1,5 +1,6 @@
 package app.emirtemindarov.p1.screens
 
+import android.content.pm.ActivityInfo
 import android.net.Uri
 import android.util.Log
 import androidx.activity.compose.BackHandler
@@ -15,9 +16,14 @@ import app.emirtemindarov.p1.components.FileHierarchyDisplay
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.geometry.Offset
@@ -30,15 +36,25 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
+import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.compose.currentBackStackEntryAsState
 import app.emirtemindarov.p1.BuildConfig
 import app.emirtemindarov.p1.Environment
+import app.emirtemindarov.p1.LockOrientationOnScreen
 import app.emirtemindarov.p1.R
 import app.emirtemindarov.p1.animations.FolderSelectionAnimationV1
+import app.emirtemindarov.p1.components.AltTopBarTitle
 import app.emirtemindarov.p1.components.FakeTopBarTitle
+import app.emirtemindarov.p1.components.LazyColumnWithItem
+import app.emirtemindarov.p1.components.buttons.ComplexButton
+import app.emirtemindarov.p1.components.buttons.OpenDialogButton
 import app.emirtemindarov.p1.components.buttons.SimpleButton
+import app.emirtemindarov.p1.components.buttons.ToolButton
+import app.emirtemindarov.p1.components.buttons.ToolButtonWithBottomDialog
+import app.emirtemindarov.p1.components.buttons.ToolButtonWithSimpleTopRightDialog
+import app.emirtemindarov.p1.components.buttons.ToolButtonWithTopDialog
 import app.emirtemindarov.p1.components.dividers.HorizontalDivider
 import app.emirtemindarov.p1.mvvm.originalroot.OriginalRootViewModel
 import kotlin.math.abs
@@ -51,135 +67,217 @@ fun FolderSelectionScreen(
     originalRootViewModel: OriginalRootViewModel,
 ) {
 
-    originalRootViewModel.debug()
+    LockOrientationOnScreen(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT) {
 
-    Log.d("FolderSelectionScreen", originalRootViewModel.getCurrentlyViewedFile()?.name.orEmpty())
+        originalRootViewModel.debug()
 
-    val context = LocalContext.current
-    //val coroutineScope = rememberCoroutineScope()
+        val backStackEntry by navController.currentBackStackEntryAsState()
+        val destination = backStackEntry?.destination
+        val currentRoute = destination?.route
 
-    val uiState by originalRootViewModel.state.collectAsState()
-    val currentHierarchy = uiState.originalRoot
+        Log.d(
+            "FolderSelectionScreen",
+            originalRootViewModel.getCurrentlyViewedFile()?.name.orEmpty()
+        )
 
-    val folderLoading = remember { mutableStateOf(false) }
+        val context = LocalContext.current
 
-    // Перехват системной кнопки "Назад"
-    BackHandler {
-        Log.i("BackHandler", "from FileSelectionScreen")
-        navController.popBackStack()
-    }
+        val uiState by originalRootViewModel.state.collectAsState()
+        val currentHierarchy = uiState.originalRoot
 
-    // обработчик выбора новой папки
-    val folderLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocumentTree()
-    ) { uri: Uri? ->
+        val folderLoading = remember { mutableStateOf(false) }
 
-        folderLoading.value = true
+        // обработчик системной кнопки "Назад"
+        BackHandler {
+            Log.i("BackHandler", "from FileSelectionScreen")
+            navController.popBackStack()
+        }
 
-        uri?.let {
-            val documentFile = DocumentFile.fromTreeUri(context, it)
+        // обработчик выбора новой папки
+        val folderLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.OpenDocumentTree()
+        ) { uri: Uri? ->
 
-            documentFile?.let { folder ->
-                Log.i("folderLauncher", "$folder")
+            folderLoading.value = true
 
-                originalRootViewModel.loadAndSetOriginalRoot(context, folder)
+            uri?.let {
+                val documentFile = DocumentFile.fromTreeUri(context, it)
+
+                documentFile?.let { folder ->
+                    Log.i("folderLauncher", "$folder")
+
+                    originalRootViewModel.loadAndSetOriginalRoot(
+                        context,
+                        folder,
+                        currentRoute
+                    )
+                }
             }
         }
-    }
 
-    val simpleButton: @Composable () -> Unit = {
-        SimpleButton(
-            enabled = true,
-            action = {
-                folderLauncher.launch(null)
-            }
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+        //  кнопка открытия новой папки - иконка
+        val newFolderIcon: @Composable () -> Unit = {
+            ToolButtonWithSimpleTopRightDialog(
+                enabled = true,
+                confirmText = "Выбрать новую папку",
+                onConfirm = {
+                    folderLauncher.launch(null)
+                }
+            ) {
                 Icon(
                     painter = painterResource(id = R.drawable.reset_focus_24px),
                     contentDescription = "Выбрать новую папку",
-                    tint = MaterialTheme.colorScheme.surface
+                    tint = MaterialTheme.colorScheme.primary
                 )
-
-                Spacer(modifier = Modifier.width(16.dp))
-
-                Text("Выбрать новую папку")
             }
         }
-    }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-
-        // fake topAppBar title
-        FakeTopBarTitle(
-            title = uiState.originalRoot?.fileInfo?.name.orEmpty(),
-            modifier = Modifier.weight(0.125f)
-        )
-
-        // "истинное" содержимое скаффолда
-        val arrangement =
-            if (currentHierarchy == null) Arrangement.Center
-            else Arrangement.Top
-
-        Column(
-            modifier = Modifier
-                .weight(0.875f)
-                .fillMaxSize(),
-            verticalArrangement = arrangement,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            if (Environment.DEBUG) {
-                Text("FolderSelectionScreen")
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // папка не выбрана
-            currentHierarchy ?: run {
-                if (folderLoading.value) {
-                    Spacer(modifier = Modifier.height(180.dp))
-                    CircularProgressIndicator()
-                    Spacer(modifier = Modifier.height(180.dp))
-                } else {
+        // кнопка открытия новой папки - иконка с текстом
+        val newFolderButton: @Composable () -> Unit = {
+            ComplexButton(
+                action = { folderLauncher.launch(null) },
+                modifier = Modifier.wrapContentSize(),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        painter = painterResource(R.drawable.folder_selection),
-                        contentDescription = null,
-                        tint = Color.Unspecified
+                        painter = painterResource(id = R.drawable.reset_focus_24px),
+                        contentDescription = "Выбрать новую папку",
+                        tint = MaterialTheme.colorScheme.primary
                     )
 
-                    Spacer(modifier = Modifier.height(50.dp))
+                    Spacer(modifier = Modifier.width(16.dp))
 
-                    simpleButton.invoke()   // выполнение composable хранящегося в переменной
-
-                    Spacer(modifier = Modifier.height(150.dp))
+                    Text(
+                        "Выбрать новую папку",
+                        fontFamily = FontFamily.SansSerif
+                    )
                 }
             }
+        }
 
-            // папка выбрана
-            currentHierarchy?.let { currentHierarchy ->
+        Column(modifier = Modifier.fillMaxSize()) {
 
-                simpleButton.invoke()
+            // под scaffold.topbar
+            AltTopBarTitle(
+                fileInfo = uiState.originalRoot?.fileInfo,
+                modifier = Modifier.wrapContentHeight().fillMaxWidth(),
+                buttons = currentHierarchy?.let {
+                    listOf(
+                        newFolderIcon,
+                    )
+                }.orEmpty()
+            )
 
-                HorizontalDivider(top = 24.dp, bottom = 24.dp, padding = 48.dp)
+            // "истинное" содержимое скаффолда
+            val arrangement =
+                if (currentHierarchy == null) Arrangement.Center
+                else Arrangement.Top
 
-                Text(text = "Иерархия папки:", style = MaterialTheme.typography.titleMedium)
-                Spacer(modifier = Modifier.height(8.dp))
+            // центрирует когда папка не выбрана, иначе слева
+            val horizontalAlignment =
+                if (currentHierarchy == null) Alignment.CenterHorizontally
+                else Alignment.Start
 
-                // базовый вертикальный скролл
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(start = 16.dp, end = 16.dp)
-                ) {
-                    item {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize(),
+                verticalArrangement = arrangement,
+                horizontalAlignment = horizontalAlignment
+            ) {
+                if (Environment.DEBUG) {
+                    Text("FolderSelectionScreen")
+                }
 
-                        Log.i("1currentHierarchy", "$currentHierarchy")
-                        FileHierarchyDisplay(
-                            fileHierarchy = currentHierarchy,
-                            originalRootViewModel = originalRootViewModel,
-                            navController = navController,
+                // папка не выбрана
+                currentHierarchy ?: run {
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    if (folderLoading.value) {
+                        Spacer(modifier = Modifier.height(180.dp))
+                        CircularProgressIndicator()
+                        Spacer(modifier = Modifier.height(180.dp))
+                    } else {
+                        Icon(
+                            painter = painterResource(R.drawable.folder_selection),
+                            contentDescription = null,
+                            tint = Color.Unspecified
                         )
+
+                        Spacer(modifier = Modifier.height(50.dp))
+
+                        newFolderButton()
+
+                        Spacer(modifier = Modifier.height(150.dp))
                     }
+                }
+
+                // папка выбрана
+                currentHierarchy?.let { currentHierarchy ->
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                    ) {
+                        Text(
+                            text = "Иерархия папки:",
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.align(Alignment.CenterStart)
+                        )
+
+                        Row(
+                            modifier = Modifier
+                                .wrapContentSize()
+                                .align(Alignment.CenterEnd),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            IconButton(
+                                onClick = {
+                                    currentHierarchy.let {
+                                        originalRootViewModel.expandAll(it)
+                                    }
+                                }
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.expand_all_24px),
+                                    contentDescription = null
+                                )
+                            }
+
+                            IconButton(
+                                onClick = {
+                                    currentHierarchy.let {
+                                        originalRootViewModel.collapseAll(it)
+                                    }
+                                }
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.collapse_all_24px),
+                                    contentDescription = null
+                                )
+                            }
+                        }
+                    }
+
+                    val horizontalScrollState = rememberScrollState()
+
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        LazyColumnWithItem(
+                            modifier = Modifier.fillMaxSize(),
+                            horizontalScrollState = horizontalScrollState
+                        ) {
+                            Log.i("1currentHierarchy", "$currentHierarchy")
+                            FileHierarchyDisplay(
+                                fileHierarchy = currentHierarchy,
+                                originalRootViewModel = originalRootViewModel,
+                                navController = navController,
+                                isRoot = true
+                            )
+                        }
+                    }
+
                 }
             }
         }

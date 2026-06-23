@@ -14,11 +14,14 @@ import app.emirtemindarov.p1.assistant.responsesapi.GraphSchema
 import app.emirtemindarov.p1.assistant.responsesapi.InputContent
 import app.emirtemindarov.p1.assistant.responsesapi.InputItem
 import app.emirtemindarov.p1.assistant.responsesapi.ResponseRequest
-import app.emirtemindarov.p1.assistant.responsesapi.ResponsesRetrofitClient
+import app.emirtemindarov.p1.assistant.responsesapi.RetrofitClient
 import app.emirtemindarov.p1.assistant.responsesapi.TextConfig
+import app.emirtemindarov.p1.mvvm.data.FileHierarchy
 import app.emirtemindarov.p1.room.GraphDao
 import app.emirtemindarov.p1.room.GraphEntity
 import app.emirtemindarov.p1.room.GraphLoadMode
+import app.emirtemindarov.p1.utils.LogUtils.logLong
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -34,8 +37,7 @@ class AssistantViewModel(
     private val _state = MutableStateFlow(AssistantState())
     val state = _state.asStateFlow()
 
-    //private val api = RetrofitClient.apiService
-    private val responsesApi = ResponsesRetrofitClient.apiService
+    private val responsesApi = RetrofitClient.apiService
 
     /*private val streamManager = StreamManager(
         BuildConfig.OPENAI_API_KEY,
@@ -51,235 +53,162 @@ class AssistantViewModel(
         }
     }*/
 
-    private var currentUserMessage: String? = null
-
     val jsonParser = Json { ignoreUnknownKeys = true }
 
-    // пока не нужно сохранять ID треда
-    //private var currentThreadId: String? = null
-
-    /*fun askAssistant(userMessage: String) {
+    fun loadGraph(mode: GraphLoadMode) {
         viewModelScope.launch {
-            try {
-                Log.d("ASSISTANT", "=== askAssistant START ===")
-                Log.d("ASSISTANT", "User message: $userMessage")
+            _state.update {
+                it.copy(stage = AssistantStage.Loading(mode))
+            }
 
-                _state.update { it.copy(stage = AssistantStage.Loading) }
-                Log.d("ASSISTANT", "Stage set to Loading")
+            Log.i("mode", "$mode")
 
-                // --- Шаг 1: создаём тред ---
-                Log.d("ASSISTANT", "Creating new thread...")
-                val threadResponse = api.createThread()
-                val threadId = threadResponse.id
-                Log.d("ASSISTANT", "Thread created: $threadId")
+            when (mode) {
+                // TODO проводить новый анализ не в основном потоке, а в параллельном в порядке очереди
+                is GraphLoadMode.NewAnalysis ->
+                    askResponse(mode.payload)
 
-                // --- Шаг 2: добавляем сообщение ---
-                Log.d("ASSISTANT", "Adding user message to thread $threadId")
-                api.addMessage(
-                    threadId = threadId,
-                    body = AddMessageRequest(
-                        "user",
-                        listOf(ContentItemRequest(type = "text", text = userMessage))
-                    )
-                )
-                Log.d("ASSISTANT", "User message added successfully")
-
-                // сохранить контекст текущего запроса
-                currentUserMessage = userMessage
-
-                // --- --- Шаг 3: запускаем стрим ---
-                Log.d("ASSISTANT", "Starting stream for thread $threadId")
-                streamManager.startStreaming(threadId)
-
-            } catch (e: Exception) {
-                Log.e("ASSISTANT", "Exception in askAssistant: ${e.message}", e)
-                _state.update {
-                    it.copy(stage = AssistantStage.Error(e.message ?: "Неизвестная ошибка"))
-                }
+                is GraphLoadMode.FromDatabase ->
+                    loadFromDatabase(mode.graphId)
             }
         }
-    }*/
+    }
 
-    fun askResponse(userMessage: String) {
-        viewModelScope.launch {
-            try {
-                _state.update { it.copy(stage = AssistantStage.Loading) }
+    private suspend fun askResponse(userMessage: String) {
+        try {
+            val request = ResponseRequest(
+                model = "gpt-4o-2024-08-06",
+                temperature = 0.01,
+                input = listOf(
 
-                // ---------- 1. Формируем запрос (ПУНКТ 4) ----------
-                val request = ResponseRequest(
-                    model = "gpt-4.1",
-                    temperature = 0.01,
-                    input = listOf(
-                        // System instructions
-                        InputItem(
-                            role = "system",
-                            content = listOf(
-                                InputContent(
-                                    type = "input_text",
-                                    text = Environment.SYSTEM_INSTRUCTIONS                                )
-                            )
-                        ),
-
-                        // Выбранный файл/папка
-                        InputItem(
-                            role = "user",
-                            content = listOf(
-                                InputContent(
-                                    type = "input_text",
-                                    text = userMessage
-                                )
-                            )
+                    // System instructions
+                    InputItem(
+                        role = "system",
+                        content = listOf(
+                            InputContent(
+                                type = "input_text",
+                                text = Environment.SYSTEM_INSTRUCTIONS                                )
                         )
                     ),
-                    text = TextConfig(
-                        format = mapOf(
-                            "type" to "json_schema",
-                            "name" to "folder_graph",
-                            "strict" to true,
-                            "schema" to GraphSchema.schemaJson
+
+                    // Выбранный файл/папка
+                    InputItem(
+                        role = "user",
+                        content = listOf(
+                            InputContent(
+                                type = "input_text",
+                                text = userMessage
+                            )
                         )
+                    )
+                ),
+                text = TextConfig(
+                    format = mapOf(
+                        "type" to "json_schema",
+                        "name" to "folder_graph",
+                        "strict" to true,
+                        "schema" to GraphSchema.schemaJson
                     )
                 )
+            )
 
-                Log.i("requestCreated", "Success")
+            Log.i("requestCreated", "Success")
 
-                // ---------- 2. Вызов Responses API ----------
-                val response = responsesApi.createResponse(request)
+            val response = responsesApi.createResponse(request)
 
-                Log.i("responseCreated", "Success")
+            Log.i("responseCreated", "Success")
 
-                // ---------- 3. Извлечение результата (ПУНКТ 5) ----------
-                val jsonText = response.output
-                    .firstOrNull { it.type == "message" }
-                    ?.content
-                    ?.firstOrNull { it.type == "output_text" }
-                    ?.text
-                    ?: error("Empty response from model")
+            Log.i("input_tokens", "${response.usage.input_tokens}")
+            Log.i("output_tokens", "${response.usage.output_tokens}")
+            Log.i("total_tokens", "${response.usage.total_tokens}")
+            Log.i("reasoning_tokens", "${response.usage.output_tokens_details.reasoning_tokens}")
 
-                Log.d("RESPONSES_API", "Final JSON length=${jsonText.length}")
+            val jsonText = response.output
+                .firstOrNull { it.type == "message" }
+                ?.content
+                ?.firstOrNull { it.type == "output_text" }
+                ?.text
+                ?: error("Empty response from model")
 
-                // ---------- 4. Парсинг графа ----------
-                val graph: GraphModel =
-                    jsonParser.decodeFromString(jsonText)
+            Log.d("RESPONSES_API", "Final JSON length=${jsonText.length}")
 
-                // ---------- 5. Сохранение в БД ----------
-                val graphId = UUID.randomUUID().toString()
-                val time = System.currentTimeMillis()
+            val graph: GraphModel =
+                jsonParser.decodeFromString(jsonText)
 
-                graphDao.insert(
-                    GraphEntity(
-                        graphId = graphId,
-                        createdAt = time,
-                        graphJson = jsonParser.encodeToString(graph),
-                        graphSource = userMessage,
-                        graphName = graph.nodes.firstOrNull()?.label ?: "Без названия",
-                        lastModified = time
-                    )
+            val graphSource =
+                jsonParser.decodeFromString<FileHierarchy>(userMessage)
+
+            val graphId = UUID.randomUUID().toString()
+            val time = System.currentTimeMillis()
+
+            // НЕ МЕНЯТЬ !!!
+            graphDao.insert(
+                GraphEntity(
+                    graphId = graphId,
+                    createdAt = time,
+                    graphJson = jsonParser.encodeToString(graph),
+                    graphSource = userMessage,
+                    graphName = graph.nodes.firstOrNull()?.name ?: "Без названия",
+                    lastModified = time
                 )
-
-                // ---------- 6. Обновление UI ----------
-                _state.update {
-                    it.copy(
-                        stage = AssistantStage.Success(
-                            graph = graph,
-                            graphId = graphId
-                        )
-                    )
-                }
-
-            } catch (e: Exception) {
-                Log.e("RESPONSES_API", "Error", e)
-                _state.update {
-                    it.copy(
-                        stage = AssistantStage.Error(
-                            e.message ?: "Unknown error"
-                        )
-                    )
-                }
-            }
-        }
-    }
-
-    /*fun loadGraph(mode: GraphLoadMode) {
-        when (mode) {
-
-            is GraphLoadMode.NewAnalysis -> {
-                askAssistant(mode.payload)    // ключевая строчка проекта
-            }
-
-            is GraphLoadMode.FromDatabase -> {
-                loadFromDatabase(mode.graphId)
-            }
-        }
-    }*/
-
-    fun responsesLoadGraph(mode: GraphLoadMode) {
-        when (mode) {
-            is GraphLoadMode.NewAnalysis ->
-                askResponse(mode.payload)
-
-            is GraphLoadMode.FromDatabase ->
-                responsesLoadFromDatabase(mode.graphId)
-        }
-    }
-
-
-    /*private fun loadFromDatabase(graphId: String) {
-        viewModelScope.launch {
-            _state.update { it.copy(
-                stage = AssistantStage.Loading
-            ) }
-
-            val entity = graphDao.getById(graphId)
-                ?: run {
-                    _state.update {
-                        it.copy(stage = AssistantStage.Error("Graph not found"))
-                    }
-                    return@launch
-                }
-
-            val graph = jsonParser.decodeFromString<GraphModel>(entity.graphJson)
+            )
 
             _state.update {
                 it.copy(
                     stage = AssistantStage.Success(
                         graph = graph,
+                        graphSource = graphSource,
                         graphId = graphId
                     )
                 )
             }
-        }
-    }*/
 
-    private fun responsesLoadFromDatabase(graphId: String) {
-        viewModelScope.launch {
-            _state.update { it.copy(stage = AssistantStage.Loading) }
-
-            val entity = graphDao.getById(graphId)
-                ?: run {
-                    _state.update {
-                        it.copy(stage = AssistantStage.Error("Graph not found"))
-                    }
-                    return@launch
-                }
-
-            val graph =
-                jsonParser.decodeFromString<GraphModel>(entity.graphJson)
-
+        } catch (e: Exception) {
+            Log.e("RESPONSES_API", "Error", e)
             _state.update {
                 it.copy(
-                    stage = AssistantStage.Success(
-                        graph = graph,
-                        graphId = graphId
+                    stage = AssistantStage.Error(
+                        e.message ?: "Unknown error"
                     )
                 )
             }
         }
+    }
+
+    private suspend fun loadFromDatabase(graphId: String) {
+
+        // задержка для проверки, на случай долгого ответа базы данных
+        if (Environment.DELAY) {
+            delay(3_000)
+        }
+
+        val entity = graphDao.getById(graphId)
+            ?: run {
+                _state.update { it.copy(
+                    stage = AssistantStage.Error("Graph not found")
+                ) }
+                return
+            }
+
+        val graph =
+            jsonParser.decodeFromString<GraphModel>(entity.graphJson)
+
+        val graphSource =
+            jsonParser.decodeFromString<FileHierarchy>(entity.graphSource)
+
+        logLong("responseGraph", "$graph")
+
+        _state.update { it.copy(
+            stage = AssistantStage.Success(
+                graph = graph,
+                graphSource = graphSource,
+                graphId = graphId
+            )
+        ) }
     }
 
     /*private suspend fun handleStreamDelta(delta: String) {
         when {
-            // TODO заставить ассистента не отправлять всю дельту!!!!!
             delta == "[DONE]" -> {
                 // DONE — ничего не делаем, финальный JSON мы поймали в thread.message
                 Log.d("ASSISTANT", "Stream finished")
@@ -359,5 +288,15 @@ class AssistantViewModel(
         }
     }*/
 
+    fun reset() {
+        _state.update { it.copy(
+            stage = AssistantStage.Idle
+        ) }
+    }
+
+    fun debug() {
+        Log.i("assistantViewModel", "${state.value.stage}")
+
+    }
 
 }
