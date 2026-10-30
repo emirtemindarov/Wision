@@ -887,7 +887,9 @@ fun GraphRenderV3(
                 )
             }
 
+            // FIXME Оптимизировать
             val rootRect = nodeRects[focusNodeId] ?: return@Canvas
+            // выводится (а значит перерисовывается) каждую секунду
             Log.i("rootRect", "$rootRect      | focusNodeId = $focusNodeId")
 
             fun Rect.leftCenter() = Offset(this.left, this.center.y)

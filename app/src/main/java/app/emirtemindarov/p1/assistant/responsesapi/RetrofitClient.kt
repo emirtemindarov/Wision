@@ -10,7 +10,7 @@ import java.util.concurrent.TimeUnit
 
 object RetrofitClient {
 
-    private const val BASE_URL = "https://api.openai.com/"
+    private const val BASE_URL = "http://192.168.1.76:8080/"
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BODY
@@ -18,9 +18,9 @@ object RetrofitClient {
 
     private val headerInterceptor = Interceptor { chain ->
         val request = chain.request().newBuilder()
-            .addHeader("Authorization", "Bearer ${BuildConfig.OPENAI_API_KEY}")
             .addHeader("Content-Type", "application/json")
             .build()
+
         chain.proceed(request)
     }
 

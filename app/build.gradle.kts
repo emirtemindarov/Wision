@@ -1,5 +1,5 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import java.util.Properties
+// import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
@@ -25,7 +25,7 @@ android {
             testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
             // забираю данные из local.properties
-            val properties = Properties()
+            /*val properties = Properties()
             properties.load(project.rootProject.file("local.properties").inputStream())
 
             val openAiApiKey = properties.getProperty("OPENAI_API_KEY") ?: ""
@@ -34,7 +34,7 @@ android {
                 "String",
                 "OPENAI_API_KEY",
                 openAiApiKey
-            )
+            )*/
         }
 
         buildTypes {
