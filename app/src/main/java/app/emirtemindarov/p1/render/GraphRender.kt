@@ -78,8 +78,6 @@ fun GraphRenderV3(
     // список областей взаимодействия
     val hitBoxes = remember { mutableStateListOf<Pair<Rect, String>>() }
 
-    val nodeRects = remember { mutableStateMapOf<String, Rect>() }
-
     // перестраивает отображение при изменении ключевых значений
     val buildedRoot = remember(graph.nodes, focusNodeId, expandedState.toMap()) {
         buildNodeTree(graph.nodes, focusNodeId, expandedState)
@@ -238,7 +236,7 @@ fun GraphRenderV3(
 
             hitBoxes.clear()
 
-            nodeRects.clear()
+            val nodeRects = mutableMapOf<String, Rect>()
 
             fun applyCamera(o: Offset) = o * camera.scale + camera.offset
             fun applyCamera(r: Rect) = Rect(applyCamera(r.topLeft), applyCamera(r.bottomRight))
@@ -887,7 +885,9 @@ fun GraphRenderV3(
                 )
             }
 
+            // FIXME Оптимизировать
             val rootRect = nodeRects[focusNodeId] ?: return@Canvas
+            // выводится (а значит перерисовывается) каждую секунду
             Log.i("rootRect", "$rootRect      | focusNodeId = $focusNodeId")
 
             fun Rect.leftCenter() = Offset(this.left, this.center.y)

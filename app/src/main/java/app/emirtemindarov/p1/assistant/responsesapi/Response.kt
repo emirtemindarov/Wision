@@ -2,9 +2,9 @@ package app.emirtemindarov.p1.assistant.responsesapi
 
 data class ResponseRequest(
     val model: String,
+    val temperature: Double,
     val input: List<InputItem>,
-    val text: TextConfig? = null,
-    val temperature: Double = 0.01
+    val text: TextConfig? = null
 )
 
 data class TextConfig(
@@ -20,6 +20,11 @@ data class InputContent(
     val type: String,
     val text: String
 )
+
+
+
+
+
 
 data class ResponseResponse(
     val output: List<ResponseOutput>,

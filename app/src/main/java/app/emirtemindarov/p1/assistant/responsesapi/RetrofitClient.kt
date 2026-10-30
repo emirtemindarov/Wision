@@ -10,7 +10,7 @@ import java.util.concurrent.TimeUnit
 
 object RetrofitClient {
 
-    private const val BASE_URL = "https://api.openai.com/"
+    private const val BASE_URL = BuildConfig.SERVER_URL
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BODY
@@ -18,16 +18,17 @@ object RetrofitClient {
 
     private val headerInterceptor = Interceptor { chain ->
         val request = chain.request().newBuilder()
-            .addHeader("Authorization", "Bearer ${BuildConfig.OPENAI_API_KEY}")
             .addHeader("Content-Type", "application/json")
             .build()
+
         chain.proceed(request)
     }
 
     private val okHttpClient = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .writeTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(120, TimeUnit.SECONDS)
+        .connectTimeout(60, TimeUnit.SECONDS)  // 1 минута
+        .readTimeout(1200, TimeUnit.SECONDS)   // 20 минут
+        .writeTimeout(1200, TimeUnit.SECONDS)  // 20 минут
+        .callTimeout(1200, TimeUnit.SECONDS)   // 20 минут
         .addInterceptor(headerInterceptor)
         .addInterceptor(loggingInterceptor)
         .build()

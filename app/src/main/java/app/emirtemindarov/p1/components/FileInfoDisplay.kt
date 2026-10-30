@@ -44,6 +44,8 @@ import app.emirtemindarov.p1.mvvm.data.FileInfo
 import app.emirtemindarov.p1.mvvm.interfaces.FileStructureInterface
 import app.emirtemindarov.p1.ui.theme.CustomTextStyles
 import app.emirtemindarov.p1.utils.FileUtils.formatDate
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 // Может работать и с папкой, и с файлом
 @Composable
@@ -94,8 +96,7 @@ fun FileInfoDisplay(
 
                         navController.navigate(
                             Screen.AnalysisScreen(
-                                // FIXME отправлять json !!!!!!!!!!!!!!!!!!!!!!
-                                fileHierarchyInfo = fileHierarchy.toString()
+                                fileHierarchyInfo = Json.encodeToString(fileHierarchy)
                             )
                         )
                     }
@@ -365,9 +366,9 @@ fun FileInfoDisplay(
                         //  создаю FileHierarchy напрямую, так как не работаю с DocumentFile API
                         navController.navigate(
                             Screen.AnalysisScreen(
-                                fileHierarchyInfo = FileHierarchy(
-                                    fileInfo = fileInfo
-                                ).toString()
+                                fileHierarchyInfo = Json.encodeToString(
+                                    FileHierarchy(fileInfo = fileInfo)
+                                )
                             )
                         )
                     }

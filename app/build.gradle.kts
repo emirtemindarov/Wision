@@ -28,18 +28,19 @@ android {
             val properties = Properties()
             properties.load(project.rootProject.file("local.properties").inputStream())
 
-            val openAiApiKey = properties.getProperty("OPENAI_API_KEY") ?: ""
+            val serverUrl = properties.getProperty("SERVER_URL") ?: ""
 
             buildConfigField(
                 "String",
-                "OPENAI_API_KEY",
-                openAiApiKey
+                "SERVER_URL",
+                serverUrl
             )
         }
 
         buildTypes {
             release {
                 isMinifyEnabled = true
+                isShrinkResources = true
                 proguardFiles(
                     getDefaultProguardFile("proguard-android-optimize.txt"),
                     "proguard-rules.pro"
